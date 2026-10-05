@@ -101,3 +101,77 @@ export function formatBucket(view: View, start: string): string {
       return String(parts(start).year);
   }
 }
+
+// Hike list and panel. A missing (NULL) value is shown as a dash, never as zero.
+
+export const MISSING = "—";
+
+/** `format(value)`, or "—" when the value is missing. */
+export function orMissing<T>(value: T | null | undefined, format: (value: T) => string): string {
+  return value === null || value === undefined ? MISSING : format(value);
+}
+
+const metres = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const speed = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+
+/** "1,234 m" from metres (elevation, ascent, descent); "—" when missing. */
+export function formatElevation(m: number | null): string {
+  return orMissing(m, (v) => `${metres.format(v)} m`);
+}
+
+/** "5 h 10 min", "45 min", "0 min" from seconds, rounded to the minute; hours keep counting past
+ * 24 ("26 h 5 min"). "—" when missing. */
+export function formatDuration(seconds: number | null): string {
+  return orMissing(seconds, (s) => {
+    const minutes = Math.round(s / 60);
+    const h = Math.floor(minutes / 60);
+    const min = minutes % 60;
+    return h === 0 ? `${min} min` : `${h} h ${min} min`;
+  });
+}
+
+/** "4.3 km/h" from metres per second; "—" when missing. */
+export function formatSpeed(mps: number | null): string {
+  return orMissing(mps, (v) => `${speed.format(v * 3.6)} km/h`);
+}
+
+/** The zone to show times in: `zone` if it is a known IANA name, otherwise UTC. */
+export function effectiveZone(zone: string | null): string {
+  if (zone === null) return "UTC";
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: zone });
+    return zone;
+  } catch {
+    return "UTC";
+  }
+}
+
+/** Wall-clock date ("YYYY-MM-DD") and time ("HH:MM") of an instant in an IANA zone. */
+function wallClock(epochSeconds: number, zone: string) {
+  const fields = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(epochSeconds * 1000));
+  const get = (type: string) => fields.find((p) => p.type === type)?.value ?? "";
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, time: `${get("hour")}:${get("minute")}` };
+}
+
+/** "Sat 12 Sep 2026": the local date of an instant in `zone` (UTC if missing or unknown). */
+export function formatLocalDate(epochSeconds: number | null, zone: string | null): string {
+  return orMissing(epochSeconds, (s) => formatDay(wallClock(s, effectiveZone(zone)).date));
+}
+
+/** "Sat 12 Sep 2026, 08:14 (Europe/Paris)": an instant in `zone`, named; UTC if the zone is
+ * missing or unknown. */
+export function formatDateTime(epochSeconds: number | null, zone: string | null): string {
+  return orMissing(epochSeconds, (s) => {
+    const z = effectiveZone(zone);
+    const { date, time } = wallClock(s, z);
+    return `${formatDay(date)}, ${time} (${z})`;
+  });
+}

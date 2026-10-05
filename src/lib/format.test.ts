@@ -1,13 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
+  MISSING,
+  effectiveZone,
   formatBarLabel,
   formatBucket,
+  formatDateTime,
   formatDay,
   formatDistance,
+  formatDuration,
+  formatElevation,
+  formatLocalDate,
   formatMonth,
   formatRange,
+  formatSpeed,
   formatWeekday,
   formatWindow,
+  orMissing,
 } from "./format";
 
 describe("formatDistance", () => {
@@ -104,5 +112,111 @@ describe("formatBucket", () => {
   it("names a month in the year view and a year in the All view", () => {
     expect(formatBucket("year", "2026-09-01")).toBe("September 2026");
     expect(formatBucket("all", "2026-01-01")).toBe("2026");
+  });
+});
+
+// 2026-09-12T06:14:00Z: 08:14 in Paris (CEST), 15:14 in Tokyo.
+const SAT_MORNING = Date.UTC(2026, 8, 12, 6, 14) / 1000;
+
+describe("orMissing", () => {
+  it("formats a value, zero included", () => {
+    expect(orMissing(0, formatDistance)).toBe("0 km");
+    expect(orMissing(14_234, formatDistance)).toBe("14.2 km");
+  });
+
+  it("shows a dash for null", () => {
+    expect(orMissing(null, formatDistance)).toBe(MISSING);
+    expect(MISSING).toBe("—");
+  });
+});
+
+describe("formatElevation", () => {
+  it("shows whole metres", () => {
+    expect(formatElevation(1234.6)).toBe("1,235 m");
+    expect(formatElevation(-3)).toBe("-3 m");
+  });
+
+  it("shows zero as 0 m and null as a dash", () => {
+    expect(formatElevation(0)).toBe("0 m");
+    expect(formatElevation(null)).toBe("—");
+  });
+});
+
+describe("formatDuration", () => {
+  it("shows hours and minutes", () => {
+    expect(formatDuration(5 * 3600 + 10 * 60)).toBe("5 h 10 min");
+    expect(formatDuration(3600)).toBe("1 h 0 min");
+  });
+
+  it("shows minutes alone under an hour", () => {
+    expect(formatDuration(45 * 60)).toBe("45 min");
+  });
+
+  it("rounds to the nearest minute", () => {
+    expect(formatDuration(45 * 60 + 29)).toBe("45 min");
+    expect(formatDuration(59 * 60 + 30)).toBe("1 h 0 min");
+  });
+
+  it("keeps counting hours past a day", () => {
+    expect(formatDuration(26 * 3600 + 5 * 60)).toBe("26 h 5 min");
+    expect(formatDuration(100 * 3600)).toBe("100 h 0 min");
+  });
+
+  it("shows zero as 0 min and null as a dash", () => {
+    expect(formatDuration(0)).toBe("0 min");
+    expect(formatDuration(null)).toBe("—");
+  });
+});
+
+describe("formatSpeed", () => {
+  it("converts metres per second to km/h", () => {
+    expect(formatSpeed(1.2)).toBe("4.3 km/h");
+    expect(formatSpeed(10)).toBe("36 km/h");
+  });
+
+  it("shows zero as 0 km/h and null as a dash", () => {
+    expect(formatSpeed(0)).toBe("0 km/h");
+    expect(formatSpeed(null)).toBe("—");
+  });
+});
+
+describe("effectiveZone", () => {
+  it("keeps a known zone and falls back to UTC otherwise", () => {
+    expect(effectiveZone("Asia/Tokyo")).toBe("Asia/Tokyo");
+    expect(effectiveZone(null)).toBe("UTC");
+    expect(effectiveZone("Not/AZone")).toBe("UTC");
+  });
+});
+
+describe("formatDateTime", () => {
+  it("shows the time in the start time zone, with its name", () => {
+    expect(formatDateTime(SAT_MORNING, "Europe/Paris")).toBe("Sat 12 Sep 2026, 08:14 (Europe/Paris)");
+    expect(formatDateTime(SAT_MORNING, "Asia/Tokyo")).toBe("Sat 12 Sep 2026, 15:14 (Asia/Tokyo)");
+  });
+
+  it("uses a 24-hour clock, midnight included", () => {
+    expect(formatDateTime(Date.UTC(2026, 0, 1, 0, 5) / 1000, "UTC")).toBe("Thu 1 Jan 2026, 00:05 (UTC)");
+  });
+
+  it("falls back to UTC when the zone is missing or unknown", () => {
+    expect(formatDateTime(SAT_MORNING, null)).toBe("Sat 12 Sep 2026, 06:14 (UTC)");
+    expect(formatDateTime(SAT_MORNING, "Not/AZone")).toBe("Sat 12 Sep 2026, 06:14 (UTC)");
+  });
+
+  it("shows a dash without a start", () => {
+    expect(formatDateTime(null, "Europe/Paris")).toBe("—");
+  });
+});
+
+describe("formatLocalDate", () => {
+  it("gives the date in the start time zone, not in UTC", () => {
+    // 2026-09-11T22:30Z is already Saturday morning in Tokyo.
+    const lateFriday = Date.UTC(2026, 8, 11, 22, 30) / 1000;
+    expect(formatLocalDate(lateFriday, "Asia/Tokyo")).toBe("Sat 12 Sep 2026");
+    expect(formatLocalDate(lateFriday, null)).toBe("Fri 11 Sep 2026");
+  });
+
+  it("shows a dash without a start", () => {
+    expect(formatLocalDate(null, null)).toBe("—");
   });
 });

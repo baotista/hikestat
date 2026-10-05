@@ -1,4 +1,5 @@
 mod aggregate;
+mod hike;
 mod location;
 mod status;
 
@@ -10,6 +11,7 @@ use tauri::{AppHandle, Manager, Runtime};
 use tauri_specta::{Builder, collect_commands};
 
 use aggregate::{Dashboard, KindFilter, View};
+use hike::{HikeDetails, HikeId};
 use location::Settings;
 use status::DbStatus;
 
@@ -60,6 +62,32 @@ async fn dashboard<R: Runtime>(
     .await
 }
 
+/// The hike with this `id`, or an error if there is none.
+#[tauri::command]
+#[specta::specta]
+async fn hike<R: Runtime>(app: AppHandle<R>, id: HikeId) -> Result<HikeDetails, String> {
+    blocking(move || {
+        let db = Db::open_existing(&db_path(&app)?).map_err(|e| e.to_string())?;
+        hike::hike(&db, id.0)
+    })
+    .await
+}
+
+/// The hikes with these `ids` (a bucket's `hikeIds`), in the same order; unknown ids are left out.
+#[tauri::command]
+#[specta::specta]
+async fn hikes<R: Runtime>(
+    app: AppHandle<R>,
+    ids: Vec<HikeId>,
+) -> Result<Vec<HikeDetails>, String> {
+    blocking(move || {
+        let db = Db::open_existing(&db_path(&app)?).map_err(|e| e.to_string())?;
+        let ids: Vec<i64> = ids.into_iter().map(|id| id.0).collect();
+        hike::hikes(&db, &ids)
+    })
+    .await
+}
+
 /// Points the app at `path` (or back at the default path with `null`), remembers it, and returns
 /// the new status.
 #[tauri::command]
@@ -80,7 +108,9 @@ fn specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new().commands(collect_commands![
         db_status::<tauri::Wry>,
         choose_db::<tauri::Wry>,
-        dashboard::<tauri::Wry>
+        dashboard::<tauri::Wry>,
+        hike::<tauri::Wry>,
+        hikes::<tauri::Wry>
     ])
 }
 
