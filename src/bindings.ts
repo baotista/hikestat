@@ -13,7 +13,7 @@ export const commands = {
 	chooseDb: (path: string | null) => typedError<DbStatus, string>(__TAURI_INVOKE("choose_db", { path })),
 	/**
 	 *  The hikes of the `view` window containing `anchor` (today in the machine's time zone if
-	 *  `null`), keeping those matching `kind_filter`.
+	 *  `null`), keeping those matching `kind_filter`. The All view runs up to today's year.
 	 */
 	dashboard: (view: View, anchor: string | null, kindFilter: KindFilter) => typedError<Dashboard, string>(__TAURI_INVOKE("dashboard", { view, anchor, kindFilter })),
 };
@@ -37,9 +37,9 @@ export type Dashboard = {
 	totals: Metrics,
 	/**  Hikes of the window whose ascent is missing. */
 	withoutElevation: number,
-	/**  Anchors of the previous and next windows (their first date). */
-	previous: string,
-	next: string,
+	/**  Anchors of the previous and next windows (their first date); absent (`null`) in the All view. */
+	previous: string | null,
+	next: string | null,
 };
 
 export type DbStatus = { state: "ready"; path: string; hikeCount: number } | 
@@ -65,10 +65,19 @@ export type Metrics = {
 	hikeCount: number,
 };
 
-/**  How the dashboard cuts time. Only the week exists so far; month, year and all come next. */
+/**  How the dashboard cuts time. Every view but All shows the window containing the anchor date. */
 export type View = 
 /**  An ISO week, one bucket per day, Monday to Sunday. */
-"week";
+"week" | 
+/**  A calendar month, one bucket per day. */
+"month" | 
+/**  A calendar year, one bucket per month. */
+"year" | 
+/**
+ *  One bucket per year, from the year of the first hike to the current year (just the current
+ *  year when there is no hike). Ignores the anchor and has no previous or next window.
+ */
+"all";
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

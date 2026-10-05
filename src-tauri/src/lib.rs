@@ -41,7 +41,7 @@ async fn db_status<R: Runtime>(app: AppHandle<R>) -> Result<DbStatus, String> {
 }
 
 /// The hikes of the `view` window containing `anchor` (today in the machine's time zone if
-/// `null`), keeping those matching `kind_filter`.
+/// `null`), keeping those matching `kind_filter`. The All view runs up to today's year.
 #[tauri::command]
 #[specta::specta]
 async fn dashboard<R: Runtime>(
@@ -50,11 +50,12 @@ async fn dashboard<R: Runtime>(
     anchor: Option<Date>,
     kind_filter: KindFilter,
 ) -> Result<Dashboard, String> {
-    let anchor = anchor.unwrap_or_else(|| jiff::Zoned::now().date());
+    let today = jiff::Zoned::now().date();
+    let anchor = anchor.unwrap_or(today);
     blocking(move || {
         let db = Db::open_existing(&db_path(&app)?).map_err(|e| e.to_string())?;
         let hikes = db.list_hikes().map_err(|e| e.to_string())?;
-        aggregate::aggregate(&hikes, view, anchor, &kind_filter).map_err(|e| e.to_string())
+        aggregate::aggregate(&hikes, view, anchor, &kind_filter, today).map_err(|e| e.to_string())
     })
     .await
 }
