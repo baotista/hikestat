@@ -78,7 +78,8 @@
   {:else if status === null}
     <p class="muted">Loading…</p>
   {:else if status.state === "ready"}
-    <Dashboard {version} bind:anchor bind:view bind:metric bind:kindFilter />
+    <!-- An edit reloads like focus or ⌘R: same window, filter and selection, fresh data. -->
+    <Dashboard {version} bind:anchor bind:view bind:metric bind:kindFilter onchanged={refresh} />
   {:else if status.state === "missing"}
     <p class="message warning">
       No database at <code>{status.path}</code> — run <code>hikestat import</code> or

@@ -27,12 +27,15 @@
     view = $bindable("week"),
     metric = $bindable("distance"),
     kindFilter = $bindable({ filter: "all" }),
+    onchanged,
   }: {
     version: number;
     anchor?: string | null;
     view?: View;
     metric?: Metric;
     kindFilter?: KindFilter;
+    // Called after a hike edit is saved: the parent reloads (bumps `version`).
+    onchanged?: () => void;
   } = $props();
 
   const VIEWS: { label: string; title: string; value: View }[] = [
@@ -156,7 +159,7 @@
 
     {#if selected}
       {#key selected.start}
-        <HikeList title={formatBucket(dashboard.view, selected.start)} ids={selected.hikeIds} {version} />
+        <HikeList title={formatBucket(dashboard.view, selected.start)} ids={selected.hikeIds} {version} {onchanged} />
       {/key}
     {/if}
   {:else if !failure}

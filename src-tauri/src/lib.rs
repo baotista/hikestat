@@ -131,6 +131,22 @@ async fn update_note<R: Runtime>(
     .await
 }
 
+/// Sets the kind of the hike `id` to `value` (trimmed, stored as typed otherwise; empty or blank
+/// clears it to Not set) and returns the updated hike.
+#[tauri::command]
+#[specta::specta]
+async fn update_kind<R: Runtime>(
+    app: AppHandle<R>,
+    id: HikeId,
+    value: String,
+) -> Result<HikeDetails, String> {
+    blocking(move || {
+        let db = Db::open_existing(&db_path(&app)?).map_err(|e| e.to_string())?;
+        hike::set_kind(&db, id.0, &value)
+    })
+    .await
+}
+
 /// Points the app at `path` (or back at the default path with `null`), remembers it, and returns
 /// the new status.
 #[tauri::command]
@@ -156,7 +172,8 @@ fn specta_builder() -> Builder<tauri::Wry> {
         hikes::<tauri::Wry>,
         kinds::<tauri::Wry>,
         update_title::<tauri::Wry>,
-        update_note::<tauri::Wry>
+        update_note::<tauri::Wry>,
+        update_kind::<tauri::Wry>
     ])
 }
 

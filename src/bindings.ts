@@ -32,6 +32,11 @@ export const commands = {
 	 *  returns the updated hike.
 	 */
 	updateNote: (id: HikeId, value: string) => typedError<HikeDetails, string>(__TAURI_INVOKE("update_note", { id, value })),
+	/**
+	 *  Sets the kind of the hike `id` to `value` (trimmed, stored as typed otherwise; empty or blank
+	 *  clears it to Not set) and returns the updated hike.
+	 */
+	updateKind: (id: HikeId, value: string) => typedError<HikeDetails, string>(__TAURI_INVOKE("update_kind", { id, value })),
 };
 
 /* Types */
