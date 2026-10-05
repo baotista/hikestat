@@ -13,7 +13,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-hikestat = { git = "ssh://git@github.com/baotista/hikestats-ingester.git", rev = "34869d1f6d7c6a7020e9eadd1da30f300519ef3f" }
+hikestat = { git = "ssh://git@github.com/baotista/hikestats-ingester.git", tag = "v0.6.0" }
 jiff = { version = "0.2", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
