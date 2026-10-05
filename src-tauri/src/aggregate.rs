@@ -11,12 +11,19 @@ use jiff::{Timestamp, ToSpan};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-/// How the dashboard cuts time. Only the week exists so far; month, year and all come next.
+/// How the dashboard cuts time. Every view but All shows the window containing the anchor date.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum View {
     /// An ISO week, one bucket per day, Monday to Sunday.
     Week,
+    /// A calendar month, one bucket per day.
+    Month,
+    /// A calendar year, one bucket per month.
+    Year,
+    /// One bucket per year, from the year of the first hike to the current year (just the current
+    /// year when there is no hike). Ignores the anchor and has no previous or next window.
+    All,
 }
 
 /// Which hikes are counted, by kind.
@@ -64,32 +71,37 @@ pub struct Dashboard {
     pub totals: Metrics,
     /// Hikes of the window whose ascent is missing.
     pub without_elevation: u32,
-    /// Anchors of the previous and next windows (their first date).
-    pub previous: Date,
-    pub next: Date,
+    /// Anchors of the previous and next windows (their first date); absent (`null`) in the All view.
+    pub previous: Option<Date>,
+    pub next: Option<Date>,
 }
 
 /// Aggregates `hikes` over the `view` window containing `anchor`, keeping those matching `filter`.
-/// Hikes without a start instant cannot be placed and are left out. Fails only when the window
-/// falls outside the dates jiff can represent.
+/// `today` is only used by the All view, which runs up to the current year. Hikes without a start
+/// instant cannot be placed and are left out. Fails only when the window falls outside the dates
+/// jiff can represent.
 pub fn aggregate(
     hikes: &[Hike],
     view: View,
     anchor: Date,
     filter: &KindFilter,
+    today: Date,
 ) -> Result<Dashboard, jiff::Error> {
-    let View::Week = view;
-    let first = anchor.checked_sub(i64::from(anchor.weekday().to_monday_zero_offset()).days())?;
-    let last = first.checked_add(6.days())?;
-    let mut buckets = (0..7)
-        .map(|i| {
-            Ok(Bucket {
-                start: first.checked_add(i.days())?,
-                metrics: Metrics::default(),
-                hike_ids: Vec::new(),
-            })
+    let Window {
+        starts,
+        last,
+        previous,
+        next,
+    } = window(hikes, view, anchor, today)?;
+    let first = starts[0];
+    let mut buckets: Vec<Bucket> = starts
+        .iter()
+        .map(|&start| Bucket {
+            start,
+            metrics: Metrics::default(),
+            hike_ids: Vec::new(),
         })
-        .collect::<Result<Vec<_>, jiff::Error>>()?;
+        .collect();
     let mut totals = Metrics::default();
     let mut without_elevation = 0;
 
@@ -98,7 +110,8 @@ pub fn aggregate(
         if day < first || day > last {
             continue;
         }
-        let bucket = &mut buckets[(day - first).get_days() as usize];
+        // The last bucket starting on or before the day; there is one since `day >= first`.
+        let bucket = &mut buckets[starts.partition_point(|&s| s <= day) - 1];
         add(&mut bucket.metrics, h);
         bucket.hike_ids.push(h.id);
         add(&mut totals, h);
@@ -114,8 +127,70 @@ pub fn aggregate(
         buckets,
         totals,
         without_elevation,
-        previous: first.checked_sub(7.days())?,
-        next: first.checked_add(7.days())?,
+        previous,
+        next,
+    })
+}
+
+struct Window {
+    /// First date of each bucket, in order; never empty.
+    starts: Vec<Date>,
+    last: Date,
+    previous: Option<Date>,
+    next: Option<Date>,
+}
+
+fn window(hikes: &[Hike], view: View, anchor: Date, today: Date) -> Result<Window, jiff::Error> {
+    let days = |first: Date, n: i64| -> Result<Vec<Date>, jiff::Error> {
+        (0..n).map(|i| first.checked_add(i.days())).collect()
+    };
+    Ok(match view {
+        View::Week => {
+            let first =
+                anchor.checked_sub(i64::from(anchor.weekday().to_monday_zero_offset()).days())?;
+            Window {
+                starts: days(first, 7)?,
+                last: first.checked_add(6.days())?,
+                previous: Some(first.checked_sub(1.week())?),
+                next: Some(first.checked_add(1.week())?),
+            }
+        }
+        View::Month => {
+            let first = anchor.first_of_month();
+            Window {
+                starts: days(first, i64::from(anchor.days_in_month()))?,
+                last: anchor.last_of_month(),
+                previous: Some(first.checked_sub(1.month())?),
+                next: Some(first.checked_add(1.month())?),
+            }
+        }
+        View::Year => {
+            let first = anchor.first_of_year();
+            Window {
+                starts: (0..12)
+                    .map(|i| first.checked_add(i.months()))
+                    .collect::<Result<_, _>>()?,
+                last: anchor.last_of_year(),
+                previous: Some(first.checked_sub(1.year())?),
+                next: Some(first.checked_add(1.year())?),
+            }
+        }
+        View::All => {
+            // The span covers every placeable hike whatever the filter, so that it stays put when
+            // the filter changes, and reaches past the current year if some hikes do.
+            let years = hikes.iter().filter_map(local_date).map(|d| d.year());
+            let (from, to) = years.fold((today.year(), today.year()), |(lo, hi), y| {
+                (lo.min(y), hi.max(y))
+            });
+            Window {
+                starts: (from..=to)
+                    .map(|y| Date::new(y, 1, 1))
+                    .collect::<Result<_, _>>()?,
+                last: Date::new(to, 12, 31)?,
+                previous: None,
+                next: None,
+            }
+        }
     })
 }
 
@@ -150,6 +225,9 @@ mod tests {
     use super::*;
     use jiff::civil::date;
 
+    /// "Today" for the views that depend on it (All).
+    const TODAY: Date = date(2026, 10, 5);
+
     /// A hike starting at `start` (RFC 3339) in `tz`, of `km` kilometres.
     fn hike(id: i64, start: &str, tz: Option<&str>, km: f64) -> Hike {
         Hike {
@@ -176,7 +254,7 @@ mod tests {
     }
 
     fn week(hikes: &[Hike], anchor: Date) -> Dashboard {
-        aggregate(hikes, View::Week, anchor, &KindFilter::All).unwrap()
+        aggregate(hikes, View::Week, anchor, &KindFilter::All, TODAY).unwrap()
     }
 
     fn days(d: &Dashboard) -> Vec<Date> {
@@ -337,8 +415,8 @@ mod tests {
         assert_eq!(days(&d), seven_days_from(date(2026, 10, 19)));
         assert_eq!(ids(&d)[6], vec![1, 2]);
         assert_eq!(d.totals.hike_count, 2);
-        assert_eq!(d.next, date(2026, 10, 26));
-        assert_eq!(week(&hikes, d.next).buckets[0].hike_ids, vec![3]);
+        assert_eq!(d.next, Some(date(2026, 10, 26)));
+        assert_eq!(week(&hikes, d.next.unwrap()).buckets[0].hike_ids, vec![3]);
     }
 
     #[test]
@@ -349,7 +427,10 @@ mod tests {
         assert_eq!((d.first, d.last), (date(2026, 12, 28), date(2027, 1, 3)));
         assert_eq!(d.first.iso_week_date().week(), 53);
         assert_eq!(ids(&d)[5], vec![1]);
-        assert_eq!((d.previous, d.next), (date(2026, 12, 21), date(2027, 1, 4)));
+        assert_eq!(
+            (d.previous, d.next),
+            (Some(date(2026, 12, 21)), Some(date(2027, 1, 4)))
+        );
     }
 
     #[test]
@@ -364,16 +445,22 @@ mod tests {
     #[test]
     fn previous_and_next_cross_month_boundaries() {
         let d = week(&[], date(2026, 10, 1));
-        assert_eq!((d.previous, d.next), (date(2026, 9, 21), date(2026, 10, 5)));
-        let back = week(&[], d.previous);
-        assert_eq!(back.next, d.first);
+        assert_eq!(
+            (d.previous, d.next),
+            (Some(date(2026, 9, 21)), Some(date(2026, 10, 5)))
+        );
+        let back = week(&[], d.previous.unwrap());
+        assert_eq!(back.next, Some(d.first));
     }
 
     #[test]
     fn previous_and_next_cross_year_boundaries() {
         let d = week(&[], date(2025, 1, 1));
-        assert_eq!((d.previous, d.next), (date(2024, 12, 23), date(2025, 1, 6)));
-        let back = week(&[], d.previous);
+        assert_eq!(
+            (d.previous, d.next),
+            (Some(date(2024, 12, 23)), Some(date(2025, 1, 6)))
+        );
+        let back = week(&[], d.previous.unwrap());
         assert_eq!(
             (back.first, back.last),
             (date(2024, 12, 23), date(2024, 12, 29))
@@ -420,7 +507,7 @@ mod tests {
             kind(hike(3, "2026-09-28T10:00:00Z", None, 1.0), None),
             kind(hike(4, "2026-09-28T11:00:00Z", None, 1.0), Some("Walking")),
         ];
-        let d = aggregate(&hikes, View::Week, date(2026, 10, 1), &filter).unwrap();
+        let d = aggregate(&hikes, View::Week, date(2026, 10, 1), &filter, TODAY).unwrap();
         assert_eq!(d.totals.hike_count as usize, d.buckets[0].hike_ids.len());
         ids(&d)
     }
@@ -453,6 +540,7 @@ mod tests {
             View::Week,
             date(2026, 10, 1),
             &KindFilter::Kind("walking".into()),
+            TODAY,
         )
         .unwrap();
         assert_eq!(d.without_elevation, 0);
@@ -460,6 +548,272 @@ mod tests {
 
     #[test]
     fn a_window_beyond_the_supported_dates_is_an_error() {
-        assert!(aggregate(&[], View::Week, Date::MAX, &KindFilter::All).is_err());
+        assert!(aggregate(&[], View::Week, Date::MAX, &KindFilter::All, TODAY).is_err());
+    }
+
+    fn month(hikes: &[Hike], anchor: Date) -> Dashboard {
+        aggregate(hikes, View::Month, anchor, &KindFilter::All, TODAY).unwrap()
+    }
+
+    fn year(hikes: &[Hike], anchor: Date) -> Dashboard {
+        aggregate(hikes, View::Year, anchor, &KindFilter::All, TODAY).unwrap()
+    }
+
+    fn all(hikes: &[Hike], today: Date) -> Dashboard {
+        // The anchor plays no part in the All view.
+        aggregate(hikes, View::All, date(2000, 6, 15), &KindFilter::All, today).unwrap()
+    }
+
+    fn n_days_from(first: Date, n: i64) -> Vec<Date> {
+        (0..n)
+            .map(|i| first.checked_add(i.days()).unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn a_month_has_one_bucket_per_day() {
+        let d = month(&[], date(2026, 9, 17));
+        assert_eq!(d.view, View::Month);
+        assert_eq!((d.first, d.last), (date(2026, 9, 1), date(2026, 9, 30)));
+        assert_eq!(days(&d), n_days_from(date(2026, 9, 1), 30));
+    }
+
+    #[test]
+    fn months_have_28_to_31_days_and_february_has_29_in_a_leap_year() {
+        let len = |y, m| month(&[], date(y, m, 1)).buckets.len();
+        assert_eq!(len(2026, 2), 28);
+        assert_eq!(len(2028, 2), 29);
+        assert_eq!(len(2026, 4), 30);
+        assert_eq!(len(2026, 1), 31);
+        let feb = month(&[], date(2028, 2, 10));
+        assert_eq!((feb.first, feb.last), (date(2028, 2, 1), date(2028, 2, 29)));
+    }
+
+    #[test]
+    fn any_day_of_the_month_anchors_the_same_window() {
+        assert_eq!(month(&[], date(2026, 9, 1)), month(&[], date(2026, 9, 30)));
+    }
+
+    #[test]
+    fn a_month_puts_hikes_on_their_local_day() {
+        let hikes = [
+            hike(1, "2026-09-01T08:00:00Z", Some("Europe/Paris"), 5.0),
+            hike(2, "2026-09-30T08:00:00Z", Some("Europe/Paris"), 3.0),
+            hike(3, "2026-09-30T21:00:00Z", Some("Asia/Tokyo"), 8.0), // 06:00 on 1 Oct in Tokyo
+            hike(4, "2026-08-31T23:30:00Z", Some("Europe/Paris"), 1.0), // 01:30 on 1 Sep in Paris
+        ];
+        let d = month(&hikes, date(2026, 9, 1));
+        assert_eq!(d.buckets[0].hike_ids, vec![1, 4]);
+        assert_eq!(d.buckets[29].hike_ids, vec![2]);
+        assert_eq!(d.totals.hike_count, 3);
+        assert_eq!(d.totals.distance_m, 9000.0);
+        assert_eq!(
+            month(&hikes, date(2026, 10, 1)).buckets[0].hike_ids,
+            vec![3]
+        );
+    }
+
+    #[test]
+    fn month_previous_and_next_cross_year_boundaries() {
+        let jan = month(&[], date(2027, 1, 20));
+        assert_eq!(
+            (jan.previous, jan.next),
+            (Some(date(2026, 12, 1)), Some(date(2027, 2, 1)))
+        );
+        let dec = month(&[], date(2026, 12, 31));
+        assert_eq!(
+            (dec.previous, dec.next),
+            (Some(date(2026, 11, 1)), Some(date(2027, 1, 1)))
+        );
+    }
+
+    #[test]
+    fn month_navigation_from_a_31st_does_not_skip_short_months() {
+        let d = month(&[], date(2026, 1, 31));
+        assert_eq!(d.next, Some(date(2026, 2, 1)));
+        assert_eq!(month(&[], d.next.unwrap()).buckets.len(), 28);
+    }
+
+    #[test]
+    fn a_year_has_twelve_monthly_buckets() {
+        let d = year(&[], date(2026, 7, 14));
+        assert_eq!(d.view, View::Year);
+        assert_eq!((d.first, d.last), (date(2026, 1, 1), date(2026, 12, 31)));
+        let starts: Vec<Date> = (1..=12).map(|m| date(2026, m, 1)).collect();
+        assert_eq!(days(&d), starts);
+        for b in &d.buckets {
+            assert_eq!(b.metrics, Metrics::default());
+        }
+    }
+
+    #[test]
+    fn a_year_puts_a_hike_in_its_local_month() {
+        let hikes = [
+            hike(1, "2026-09-30T21:00:00Z", Some("Asia/Tokyo"), 8.0), // 06:00 on 1 Oct in Tokyo
+            hike(2, "2026-09-30T21:00:00Z", None, 2.0),               // 30 Sep in UTC
+            hike(3, "2026-01-01T10:00:00Z", None, 1.0),
+            hike(4, "2026-12-31T23:30:00Z", Some("Europe/Paris"), 1.0), // 00:30 on 1 Jan 2027 in Paris
+        ];
+        let d = year(&hikes, date(2026, 5, 5));
+        assert_eq!(
+            ids(&d),
+            vec![
+                vec![3],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![2],
+                vec![1],
+                vec![],
+                vec![]
+            ]
+        );
+        assert_eq!(d.buckets[9].metrics.distance_m, 8000.0);
+        assert_eq!(d.totals.hike_count, 3);
+        assert_eq!(year(&hikes, date(2027, 1, 1)).buckets[0].hike_ids, vec![4]);
+    }
+
+    #[test]
+    fn year_previous_and_next_are_the_first_days_of_the_adjacent_years() {
+        let d = year(&[], date(2026, 7, 14));
+        assert_eq!(
+            (d.previous, d.next),
+            (Some(date(2025, 1, 1)), Some(date(2027, 1, 1)))
+        );
+        // From a leap day too.
+        let leap = year(&[], date(2028, 2, 29));
+        assert_eq!(
+            (leap.previous, leap.next),
+            (Some(date(2027, 1, 1)), Some(date(2029, 1, 1)))
+        );
+    }
+
+    #[test]
+    fn all_spans_from_the_first_hike_year_to_the_current_year() {
+        let hikes = [
+            hike(1, "2021-06-01T08:00:00Z", None, 5.0),
+            hike(2, "2019-03-01T08:00:00Z", None, 2.0),
+            hike(3, "2026-09-30T08:00:00Z", None, 1.0),
+        ];
+        let d = all(&hikes, TODAY);
+        assert_eq!(d.view, View::All);
+        assert_eq!((d.first, d.last), (date(2019, 1, 1), date(2026, 12, 31)));
+        let starts: Vec<Date> = (2019..=2026).map(|y| date(y, 1, 1)).collect();
+        assert_eq!(days(&d), starts);
+        assert_eq!(
+            ids(&d),
+            vec![
+                vec![2],
+                vec![],
+                vec![1],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![3]
+            ]
+        );
+        assert_eq!(d.buckets[1].metrics, Metrics::default());
+        assert_eq!(d.totals.hike_count, 3);
+    }
+
+    #[test]
+    fn all_reaches_the_current_year_even_without_recent_hikes() {
+        let hikes = [hike(1, "2024-06-01T08:00:00Z", None, 5.0)];
+        let d = all(&hikes, date(2026, 1, 1));
+        assert_eq!((d.first, d.last), (date(2024, 1, 1), date(2026, 12, 31)));
+        assert_eq!(ids(&d), vec![vec![1], vec![], vec![]]);
+    }
+
+    #[test]
+    fn all_uses_the_local_year_of_the_first_hike() {
+        // 1 January 2020 at 08:00 in Tokyo is still 2019 in UTC.
+        let hikes = [hike(1, "2019-12-31T23:00:00Z", Some("Asia/Tokyo"), 5.0)];
+        let d = all(&hikes, TODAY);
+        assert_eq!(d.first, date(2020, 1, 1));
+        assert_eq!(d.buckets[0].hike_ids, vec![1]);
+    }
+
+    #[test]
+    fn all_keeps_hikes_dated_after_the_current_year() {
+        // A clock set in the past must not hide hikes.
+        let hikes = [hike(1, "2027-03-01T08:00:00Z", None, 5.0)];
+        let d = all(&hikes, TODAY);
+        assert_eq!((d.first, d.last), (date(2026, 1, 1), date(2027, 12, 31)));
+        assert_eq!(ids(&d), vec![vec![], vec![1]]);
+    }
+
+    #[test]
+    fn all_on_an_empty_database_is_the_current_year() {
+        let d = all(&[], TODAY);
+        assert_eq!((d.first, d.last), (date(2026, 1, 1), date(2026, 12, 31)));
+        assert_eq!(days(&d), vec![date(2026, 1, 1)]);
+        assert_eq!(d.totals, Metrics::default());
+    }
+
+    #[test]
+    fn all_has_no_previous_or_next() {
+        let hikes = [hike(1, "2021-06-01T08:00:00Z", None, 5.0)];
+        let d = all(&hikes, TODAY);
+        assert_eq!((d.previous, d.next), (None, None));
+    }
+
+    #[test]
+    fn the_all_span_does_not_depend_on_the_kind_filter() {
+        let hikes = [
+            kind(hike(1, "2019-06-01T08:00:00Z", None, 5.0), Some("cycling")),
+            kind(hike(2, "2024-06-01T08:00:00Z", None, 5.0), Some("walking")),
+        ];
+        let filter = KindFilter::Kind("walking".into());
+        let d = aggregate(&hikes, View::All, TODAY, &filter, TODAY).unwrap();
+        assert_eq!(d.first, date(2019, 1, 1));
+        assert_eq!(d.buckets[0].hike_ids, Vec::<i64>::new());
+        assert_eq!(d.buckets[5].hike_ids, vec![2]);
+        assert_eq!(d.totals.hike_count, 1);
+    }
+
+    #[test]
+    fn the_kind_filter_applies_in_every_view() {
+        let hikes = [
+            kind(hike(1, "2026-09-28T08:00:00Z", None, 1.0), Some("walking")),
+            kind(hike(2, "2026-09-28T09:00:00Z", None, 1.0), Some("cycling")),
+            kind(hike(3, "2026-09-28T10:00:00Z", None, 1.0), None),
+        ];
+        for view in [View::Week, View::Month, View::Year, View::All] {
+            let count = |filter: KindFilter| {
+                let d = aggregate(&hikes, view, date(2026, 9, 28), &filter, TODAY).unwrap();
+                let ids: Vec<i64> = d.buckets.iter().flat_map(|b| b.hike_ids.clone()).collect();
+                (d.totals.hike_count, ids)
+            };
+            assert_eq!(count(KindFilter::All), (3, vec![1, 2, 3]), "{view:?}");
+            assert_eq!(count(KindFilter::NotSet), (1, vec![3]), "{view:?}");
+            assert_eq!(
+                count(KindFilter::Kind("cycling".into())),
+                (1, vec![2]),
+                "{view:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn switching_views_shows_the_window_containing_the_anchor() {
+        let anchor = date(2026, 3, 18); // a Wednesday in March 2026
+        let w = week(&[], anchor);
+        let m = month(&[], anchor);
+        let y = year(&[], anchor);
+        assert_eq!((w.first, w.last), (date(2026, 3, 16), date(2026, 3, 22)));
+        assert_eq!((m.first, m.last), (date(2026, 3, 1), date(2026, 3, 31)));
+        assert_eq!((y.first, y.last), (date(2026, 1, 1), date(2026, 12, 31)));
+    }
+
+    #[test]
+    fn month_and_year_windows_beyond_the_supported_dates_are_errors() {
+        for view in [View::Month, View::Year] {
+            assert!(aggregate(&[], view, Date::MAX, &KindFilter::All, TODAY).is_err());
+        }
     }
 }

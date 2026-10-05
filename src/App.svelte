@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  import { commands, type DbStatus } from "./bindings";
+  import { commands, type DbStatus, type View } from "./bindings";
   import Dashboard from "./lib/Dashboard.svelte";
   import Settings from "./lib/Settings.svelte";
 
@@ -12,6 +12,8 @@
   let version = $state(0);
   // Window shown by the dashboard, kept here so that it survives a visit to Settings.
   let anchor = $state<string | null>(null);
+  // Same for the view; the app opens on the week.
+  let view = $state<View>("week");
 
   // Only the latest request may update the screen (focus and ⌘R can overlap).
   let latest = 0;
@@ -71,7 +73,7 @@
   {:else if status === null}
     <p class="muted">Loading…</p>
   {:else if status.state === "ready"}
-    <Dashboard {version} bind:anchor />
+    <Dashboard {version} bind:anchor bind:view />
   {:else if status.state === "missing"}
     <p class="message warning">
       No database at <code>{status.path}</code> — run <code>hikestat import</code> or

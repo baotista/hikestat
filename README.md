@@ -4,9 +4,10 @@ Hikestat is a local, single-user macOS desktop app to look at the hikes imported
 [`hikestat` CLI](https://github.com/baotista/hikestats-ingester) (the ingester). It opens the same
 SQLite database as the CLI, through the same `hikestat` library, and never imports GPX itself.
 
-For now the app shows the week view of the dashboard: the current ISO week's total distance and
-one bar per day, with ‹ › to move week by week, plus the database it uses and whether it can be
-opened. Built with [Tauri](https://v2.tauri.app) v2 and Svelte 5 + TypeScript (see
+For now the app shows the dashboard's total distance and bar chart in four views: W (an ISO week,
+one bar per day), M (a month, one bar per day), Y (a year, one bar per month) and All (one bar per
+year, from the year of the first hike to the current year), with ‹ › to move between weeks, months
+or years, plus the database it uses and whether it can be opened. It opens on the current week. Built with [Tauri](https://v2.tauri.app) v2 and Svelte 5 + TypeScript (see
 [ADR 0001](docs/adr/0001-tauri-with-svelte-frontend.md)).
 
 ## Prerequisites
