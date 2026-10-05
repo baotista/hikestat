@@ -15,12 +15,18 @@
   let {
     bars,
     formatTick,
+    formatValue = formatTick,
+    minStep = 0,
     label,
     selected = null,
     onselect,
   }: {
     bars: Bar[];
     formatTick: (value: number) => string;
+    /** The value shown above a hovered or selected bar; `formatTick` by default. */
+    formatValue?: (value: number) => string;
+    /** Smallest grid step, e.g. 1 to keep whole numbers on the grid. */
+    minStep?: number;
     label: string;
     /** Key of the highlighted bar. */
     selected?: string | null;
@@ -52,7 +58,7 @@
     return ([1, 2, 5, 10].find((m) => m * pow >= raw) ?? 10) * pow;
   }
 
-  const step = $derived(niceStep(Math.max(0, ...bars.map((b) => b.value))));
+  const step = $derived(Math.max(minStep, niceStep(Math.max(0, ...bars.map((b) => b.value)))));
   const top = $derived(Math.max(1, Math.ceil(Math.max(0, ...bars.map((b) => b.value)) / step)) * step);
   const ticks = $derived(Array.from({ length: Math.round(top / step) + 1 }, (_, i) => i * step));
 
@@ -112,7 +118,7 @@
         >
         {#if hovered === i || selected === bar.key}
           <text class="value" x={i * band + band / 2} y={y(bar.value) - 8} text-anchor="middle">
-            {formatTick(bar.value)}
+            {formatValue(bar.value)}
           </text>
         {/if}
         <title>{bar.description}</title>

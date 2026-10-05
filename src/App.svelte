@@ -4,6 +4,7 @@
   import { commands, type DbStatus, type View } from "./bindings";
   import Dashboard from "./lib/Dashboard.svelte";
   import Settings from "./lib/Settings.svelte";
+  import type { Metric } from "./lib/format";
 
   let status = $state<DbStatus | null>(null);
   let failure = $state<string | null>(null);
@@ -14,6 +15,8 @@
   let anchor = $state<string | null>(null);
   // Same for the view; the app opens on the week.
   let view = $state<View>("week");
+  // And for the charted metric; distance by default.
+  let metric = $state<Metric>("distance");
 
   // Only the latest request may update the screen (focus and ⌘R can overlap).
   let latest = 0;
@@ -73,7 +76,7 @@
   {:else if status === null}
     <p class="muted">Loading…</p>
   {:else if status.state === "ready"}
-    <Dashboard {version} bind:anchor bind:view />
+    <Dashboard {version} bind:anchor bind:view bind:metric />
   {:else if status.state === "missing"}
     <p class="message warning">
       No database at <code>{status.path}</code> — run <code>hikestat import</code> or

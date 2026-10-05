@@ -1,7 +1,7 @@
 // Formatting helpers. Units are metric, text is English.
 // Local dates arrive from Rust as "YYYY-MM-DD" and are formatted as is: no time zone involved.
 
-import type { View } from "../bindings";
+import type { Metrics, View } from "../bindings";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -174,4 +174,73 @@ export function formatDateTime(epochSeconds: number | null, zone: string | null)
     const { date, time } = wallClock(s, z);
     return `${formatDay(date)}, ${time} (${z})`;
   });
+}
+
+// Dashboard metrics. Bars and ticks are in the metric's chart unit: km, m, hours, hikes.
+
+const plain = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+
+/** The metric charted by the dashboard and summed in its header. */
+export type Metric = "distance" | "ascent" | "moving" | "count";
+
+/** Lower-case name of a metric: "distance", "ascent", "moving time", "hikes". */
+export function metricName(metric: Metric): string {
+  return { distance: "distance", ascent: "ascent", moving: "moving time", count: "hikes" }[metric];
+}
+
+/** The metric's value in its chart unit (km, m, hours or a number of hikes); a missing value is 0. */
+export function metricValue(metric: Metric, m: Metrics): number {
+  switch (metric) {
+    case "distance":
+      return (m.distanceM ?? 0) / 1000;
+    case "ascent":
+      return m.ascentM ?? 0;
+    case "moving":
+      return m.movingS / 3600;
+    case "count":
+      return m.hikeCount;
+  }
+}
+
+/** "1 hike", "3 hikes". */
+export function formatHikeCount(n: number): string {
+  return `${n} ${n === 1 ? "hike" : "hikes"}`;
+}
+
+/** A value in the metric's chart unit, with its unit: "14.2 km", "1,235 m", "5 h 10 min", "3 hikes". */
+export function formatMetric(metric: Metric, value: number): string {
+  switch (metric) {
+    case "distance":
+      return formatDistance(value * 1000);
+    case "ascent":
+      return formatElevation(value);
+    case "moving":
+      return formatDuration(value * 3600);
+    case "count":
+      return formatHikeCount(value);
+  }
+}
+
+/** Smallest grid step in the metric's chart unit: whole hours and whole hikes. */
+export function metricMinStep(metric: Metric): number {
+  return metric === "moving" || metric === "count" ? 1 : 0;
+}
+
+/** A compact grid label in the metric's chart unit: "10 km", "500 m", "2 h", "3". */
+export function formatMetricTick(metric: Metric, value: number): string {
+  switch (metric) {
+    case "distance":
+      return formatDistance(value * 1000);
+    case "ascent":
+      return formatElevation(value);
+    case "moving":
+      return `${plain.format(value)} h`;
+    case "count":
+      return plain.format(value);
+  }
+}
+
+/** "1 hike without elevation", "3 hikes without elevation"; `null` when there is none. */
+export function formatWithoutElevation(n: number): string | null {
+  return n === 0 ? null : `${formatHikeCount(n)} without elevation`;
 }
