@@ -9,13 +9,21 @@ import {
   formatDistance,
   formatDuration,
   formatElevation,
+  formatHikeCount,
   formatLocalDate,
+  formatMetric,
+  formatMetricTick,
   formatMonth,
   formatRange,
   formatSpeed,
   formatWeekday,
   formatWindow,
+  formatWithoutElevation,
+  metricMinStep,
+  metricName,
+  metricValue,
   orMissing,
+  type Metric,
 } from "./format";
 
 describe("formatDistance", () => {
@@ -218,5 +226,84 @@ describe("formatLocalDate", () => {
 
   it("shows a dash without a start", () => {
     expect(formatLocalDate(null, null)).toBe("—");
+  });
+});
+
+const METRICS: Metric[] = ["distance", "ascent", "moving", "count"];
+const SOME = { distanceM: 14_234, ascentM: 1234.6, movingS: 5 * 3600 + 10 * 60, hikeCount: 3 };
+
+describe("metricName", () => {
+  it("names each metric in lower case", () => {
+    expect(METRICS.map(metricName)).toEqual(["distance", "ascent", "moving time", "hikes"]);
+  });
+});
+
+describe("metricValue", () => {
+  it("gives the value in the chart unit: km, m, hours, hikes", () => {
+    expect(metricValue("distance", SOME)).toBeCloseTo(14.234);
+    expect(metricValue("ascent", SOME)).toBe(1234.6);
+    expect(metricValue("moving", SOME)).toBeCloseTo(5 + 10 / 60);
+    expect(metricValue("count", SOME)).toBe(3);
+  });
+
+  it("counts a missing (null) distance or ascent as 0", () => {
+    const missing = { distanceM: null, ascentM: null, movingS: 0, hikeCount: 0 };
+    expect(METRICS.map((m) => metricValue(m, missing))).toEqual([0, 0, 0, 0]);
+  });
+});
+
+describe("formatHikeCount", () => {
+  it("pluralises", () => {
+    expect(formatHikeCount(0)).toBe("0 hikes");
+    expect(formatHikeCount(1)).toBe("1 hike");
+    expect(formatHikeCount(3)).toBe("3 hikes");
+  });
+});
+
+describe("formatMetric", () => {
+  it("formats a chart value with the metric's unit", () => {
+    const formatted = METRICS.map((m) => formatMetric(m, metricValue(m, SOME)));
+    expect(formatted).toEqual(["14.2 km", "1,235 m", "5 h 10 min", "3 hikes"]);
+  });
+
+  it("formats zero", () => {
+    expect(METRICS.map((m) => formatMetric(m, 0))).toEqual(["0 km", "0 m", "0 min", "0 hikes"]);
+  });
+
+  it("shows a single hike in the singular", () => {
+    expect(formatMetric("count", 1)).toBe("1 hike");
+  });
+});
+
+describe("metricMinStep", () => {
+  it("keeps whole hours and whole hikes on the grid", () => {
+    expect(METRICS.map(metricMinStep)).toEqual([0, 0, 1, 1]);
+  });
+});
+
+describe("formatMetricTick", () => {
+  it("labels distance in km and ascent in m", () => {
+    expect(formatMetricTick("distance", 10)).toBe("10 km");
+    expect(formatMetricTick("distance", 2.5)).toBe("2.5 km");
+    expect(formatMetricTick("ascent", 1000)).toBe("1,000 m");
+  });
+
+  it("labels moving time in hours and hikes as a bare number", () => {
+    expect(formatMetricTick("moving", 0)).toBe("0 h");
+    expect(formatMetricTick("moving", 2)).toBe("2 h");
+    expect(formatMetricTick("moving", 1000)).toBe("1,000 h");
+    expect(formatMetricTick("count", 0)).toBe("0");
+    expect(formatMetricTick("count", 5)).toBe("5");
+  });
+});
+
+describe("formatWithoutElevation", () => {
+  it("is absent when every hike has elevation", () => {
+    expect(formatWithoutElevation(0)).toBeNull();
+  });
+
+  it("pluralises the number of hikes", () => {
+    expect(formatWithoutElevation(1)).toBe("1 hike without elevation");
+    expect(formatWithoutElevation(3)).toBe("3 hikes without elevation");
   });
 });

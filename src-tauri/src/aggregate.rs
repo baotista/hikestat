@@ -487,6 +487,71 @@ mod tests {
     }
 
     #[test]
+    fn a_hike_without_ascent_counts_as_zero_in_its_bucket_and_is_reported() {
+        let mut a = hike(1, "2026-09-28T08:00:00Z", None, 5.0);
+        a.ascent_m = None;
+        let mut b = hike(2, "2026-10-02T08:00:00Z", None, 5.0);
+        b.ascent_m = None;
+        let hikes = [a, b, hike(3, "2026-10-02T09:00:00Z", None, 1.0)];
+        let d = week(&hikes, date(2026, 10, 1));
+        assert_eq!(d.buckets[0].metrics.ascent_m, 0.0);
+        assert_eq!(d.buckets[0].metrics.hike_count, 1);
+        assert_eq!(d.buckets[4].metrics.ascent_m, 100.0);
+        assert_eq!(d.totals.ascent_m, 100.0);
+        assert_eq!(d.without_elevation, 2);
+    }
+
+    #[test]
+    fn a_zero_ascent_is_not_missing_elevation() {
+        let mut flat = hike(1, "2026-09-30T08:00:00Z", None, 5.0);
+        flat.ascent_m = Some(0.0);
+        assert_eq!(week(&[flat], date(2026, 10, 1)).without_elevation, 0);
+    }
+
+    #[test]
+    fn a_missing_moving_time_is_not_missing_elevation() {
+        let mut h = hike(1, "2026-09-30T08:00:00Z", None, 5.0);
+        h.duration_moving_s = None;
+        let d = week(&[h], date(2026, 10, 1));
+        assert_eq!((d.totals.moving_s, d.totals.hike_count), (0, 1));
+        assert_eq!(d.without_elevation, 0);
+    }
+
+    #[test]
+    fn moving_time_and_hike_count_totals_sum_every_bucket_in_every_view() {
+        let mut long = hike(1, "2026-03-02T08:00:00Z", None, 20.0);
+        long.duration_moving_s = Some(6 * 3600);
+        let mut short = hike(2, "2026-03-02T15:00:00Z", None, 2.0);
+        short.duration_moving_s = Some(1800);
+        let mut later = hike(3, "2026-03-05T08:00:00Z", None, 8.0);
+        later.duration_moving_s = Some(7200);
+        let hikes = [long, short, later];
+        for view in [View::Week, View::Month, View::Year, View::All] {
+            let d = aggregate(&hikes, view, date(2026, 3, 4), &KindFilter::All, TODAY).unwrap();
+            assert_eq!(d.totals.moving_s, 6 * 3600 + 1800 + 7200, "{view:?}");
+            assert_eq!(d.totals.hike_count, 3, "{view:?}");
+            let moving: i64 = d.buckets.iter().map(|b| b.metrics.moving_s).sum();
+            let count: u32 = d.buckets.iter().map(|b| b.metrics.hike_count).sum();
+            assert_eq!((moving, count), (d.totals.moving_s, d.totals.hike_count));
+        }
+        let w = week(&hikes, date(2026, 3, 4));
+        assert_eq!(
+            (
+                w.buckets[0].metrics.moving_s,
+                w.buckets[0].metrics.hike_count
+            ),
+            (6 * 3600 + 1800, 2)
+        );
+        assert_eq!(
+            (
+                w.buckets[3].metrics.moving_s,
+                w.buckets[3].metrics.hike_count
+            ),
+            (7200, 1)
+        );
+    }
+
+    #[test]
     fn hikes_outside_the_window_are_not_reported_without_elevation() {
         let mut h = hike(1, "2026-09-20T08:00:00Z", None, 5.0);
         h.ascent_m = None;

@@ -2,17 +2,29 @@
   import { commands, type Dashboard, type KindFilter, type View } from "../bindings";
   import BarChart, { type Bar } from "./BarChart.svelte";
   import HikeList from "./HikeList.svelte";
-  import { formatBarLabel, formatBucket, formatDistance, formatWindow } from "./format";
+  import {
+    formatBarLabel,
+    formatBucket,
+    formatMetric,
+    formatMetricTick,
+    formatWindow,
+    formatWithoutElevation,
+    metricMinStep,
+    metricName,
+    metricValue,
+    type Metric,
+  } from "./format";
 
   // `version` changes on every reload (focus, ⌘R): the dashboard is fetched again.
-  // `anchor` and `view` are owned by the parent so the window shown survives a visit to Settings.
+  // `anchor`, `view` and `metric` are owned by the parent so they survive a visit to Settings.
   // `anchor` is a date (`null` = today, in the machine's time zone, resolved in Rust): every view
   // but All shows the window containing it, so switching views keeps it in sight.
   let {
     version,
     anchor = $bindable(null),
     view = $bindable("week"),
-  }: { version: number; anchor?: string | null; view?: View } = $props();
+    metric = $bindable("distance"),
+  }: { version: number; anchor?: string | null; view?: View; metric?: Metric } = $props();
 
   const VIEWS: { label: string; title: string; value: View }[] = [
     { label: "W", title: "Week", value: "week" },
@@ -23,6 +35,12 @@
   const UNIT: Record<View, string> = { week: "week", month: "month", year: "year", all: "year" };
   const BUCKET: Record<View, string> = { week: "day", month: "day", year: "month", all: "year" };
   const ALL: KindFilter = { filter: "all" };
+  const METRICS: { label: string; value: Metric }[] = [
+    { label: "Distance", value: "distance" },
+    { label: "Ascent", value: "ascent" },
+    { label: "Moving time", value: "moving" },
+    { label: "Hikes", value: "count" },
+  ];
 
   let dashboard = $state<Dashboard | null>(null);
   let failure = $state<string | null>(null);
@@ -58,17 +76,18 @@
     selection = selected?.start === key ? null : { window: windowOf(dashboard), key };
   }
 
-  const km = (metres: number | null) => (metres ?? 0) / 1000;
-
   // Labels follow the view of the data shown, not the one being fetched.
   const bars = $derived<Bar[]>(
     (dashboard?.buckets ?? []).map((b) => ({
       key: b.start,
       label: formatBarLabel(dashboard!.view, b.start),
-      value: km(b.metrics.distanceM),
-      description: `${formatBucket(dashboard!.view, b.start)}: ${formatDistance(b.metrics.distanceM ?? 0)}`,
+      value: metricValue(metric, b.metrics),
+      description: `${formatBucket(dashboard!.view, b.start)}: ${formatMetric(metric, metricValue(metric, b.metrics))}`,
     })),
   );
+
+  // Missing elevation only lowers the ascent, so the hint is only shown with that metric.
+  const hint = $derived(dashboard && metric === "ascent" ? formatWithoutElevation(dashboard.withoutElevation) : null);
 </script>
 
 <section class="dashboard">
@@ -85,8 +104,11 @@
   {#if dashboard}
     <header>
       <div class="total">
-        <span class="label">Total distance</span>
-        <span class="value">{formatDistance(dashboard.totals.distanceM ?? 0)}</span>
+        <span class="label">Total {metricName(metric)}</span>
+        <span class="value">{formatMetric(metric, metricValue(metric, dashboard.totals))}</span>
+        {#if hint}
+          <span class="hint">{hint}</span>
+        {/if}
       </div>
       <div class="range">
         <!-- No navigation in All (`previous` and `next` are null): the anchor is kept for the other views. -->
@@ -102,10 +124,18 @@
       </div>
     </header>
 
+    <select class="metric" aria-label="Metric" bind:value={metric}>
+      {#each METRICS as m (m.value)}
+        <option value={m.value}>{m.label}</option>
+      {/each}
+    </select>
+
     <BarChart
       {bars}
-      formatTick={(v) => formatDistance(v * 1000)}
-      label={`Distance per ${BUCKET[dashboard.view]}, ${formatWindow(dashboard.view, dashboard.first, dashboard.last)}`}
+      formatTick={(v) => formatMetricTick(metric, v)}
+      formatValue={(v) => formatMetric(metric, v)}
+      minStep={metricMinStep(metric)}
+      label={`${METRICS.find((m) => m.value === metric)?.label} per ${BUCKET[dashboard.view]}, ${formatWindow(dashboard.view, dashboard.first, dashboard.last)}`}
       selected={selected?.start ?? null}
       onselect={select}
     />
@@ -163,6 +193,15 @@
     font-weight: 600;
     line-height: 1.2;
     font-variant-numeric: tabular-nums;
+  }
+  .hint {
+    color: var(--warning);
+    font-size: 0.85rem;
+  }
+  .metric {
+    display: block;
+    margin: 0 0 8px auto;
+    font: inherit;
   }
   .range {
     display: flex;
