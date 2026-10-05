@@ -4,7 +4,9 @@
   import { formatDay, formatDistance, formatRange, formatWeekday } from "./format";
 
   // `version` changes on every reload (focus, ⌘R): the dashboard is fetched again.
-  let { version }: { version: number } = $props();
+  // `anchor` is owned by the parent so the window shown survives a visit to Settings.
+  // `null` = today, in the machine's time zone (resolved in Rust).
+  let { version, anchor = $bindable(null) }: { version: number; anchor?: string | null } = $props();
 
   const VIEWS = [
     { label: "W", title: "Week", enabled: true },
@@ -14,8 +16,6 @@
   ];
   const ALL: KindFilter = { filter: "all" };
 
-  /** `null` = today, in the machine's time zone (resolved in Rust). */
-  let anchor = $state<string | null>(null);
   let dashboard = $state<Dashboard | null>(null);
   let failure = $state<string | null>(null);
 

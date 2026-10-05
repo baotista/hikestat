@@ -23,40 +23,56 @@ fn db_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
     Ok(location::resolve(&settings, location::default_db_path()))
 }
 
+/// Runs `work` on a blocking thread: opening the database can wait up to the busy timeout while
+/// the CLI is importing, and that must not freeze the UI.
+async fn blocking<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 /// Status of the database the app currently points at.
 #[tauri::command]
 #[specta::specta]
-fn db_status<R: Runtime>(app: AppHandle<R>) -> Result<DbStatus, String> {
-    Ok(status::status_of(&db_path(&app)?))
+async fn db_status<R: Runtime>(app: AppHandle<R>) -> Result<DbStatus, String> {
+    blocking(move || Ok(status::status_of(&db_path(&app)?))).await
 }
 
 /// The hikes of the `view` window containing `anchor` (today in the machine's time zone if
 /// `null`), keeping those matching `kind_filter`.
 #[tauri::command]
 #[specta::specta]
-fn dashboard<R: Runtime>(
+async fn dashboard<R: Runtime>(
     app: AppHandle<R>,
     view: View,
     anchor: Option<Date>,
     kind_filter: KindFilter,
 ) -> Result<Dashboard, String> {
     let anchor = anchor.unwrap_or_else(|| jiff::Zoned::now().date());
-    let db = Db::open_existing(&db_path(&app)?).map_err(|e| e.to_string())?;
-    let hikes = db.list_hikes().map_err(|e| e.to_string())?;
-    aggregate::aggregate(&hikes, view, anchor, &kind_filter).map_err(|e| e.to_string())
+    blocking(move || {
+        let db = Db::open_existing(&db_path(&app)?).map_err(|e| e.to_string())?;
+        let hikes = db.list_hikes().map_err(|e| e.to_string())?;
+        aggregate::aggregate(&hikes, view, anchor, &kind_filter).map_err(|e| e.to_string())
+    })
+    .await
 }
 
 /// Points the app at `path` (or back at the default path with `null`), remembers it, and returns
 /// the new status.
 #[tauri::command]
 #[specta::specta]
-fn choose_db<R: Runtime>(app: AppHandle<R>, path: Option<String>) -> Result<DbStatus, String> {
+async fn choose_db<R: Runtime>(
+    app: AppHandle<R>,
+    path: Option<String>,
+) -> Result<DbStatus, String> {
     let settings = Settings {
         db_path: path.map(PathBuf::from),
     };
     location::save_settings(&settings_file(&app)?, &settings)
         .map_err(|e| format!("cannot save the settings: {e}"))?;
-    db_status(app)
+    db_status(app).await
 }
 
 fn specta_builder() -> Builder<tauri::Wry> {

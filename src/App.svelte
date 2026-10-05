@@ -10,6 +10,8 @@
   let screen = $state<"dashboard" | "settings">("dashboard");
   // Bumped on every successful reload so the dashboard fetches its data again.
   let version = $state(0);
+  // Window shown by the dashboard, kept here so that it survives a visit to Settings.
+  let anchor = $state<string | null>(null);
 
   // Only the latest request may update the screen (focus and ⌘R can overlap).
   let latest = 0;
@@ -69,7 +71,7 @@
   {:else if status === null}
     <p class="muted">Loading…</p>
   {:else if status.state === "ready"}
-    <Dashboard {version} />
+    <Dashboard {version} bind:anchor />
   {:else if status.state === "missing"}
     <p class="message warning">
       No database at <code>{status.path}</code> — run <code>hikestat import</code> or
