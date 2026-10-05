@@ -95,6 +95,14 @@ pub fn update_note(db: &Db, id: i64, value: &str) -> Result<HikeDetails, String>
     hike(db, id)
 }
 
+// --- Kind edit -------------------------------------------------------------------------------
+
+/// Sets the kind of the hike `id` (trimmed; empty or blank clears it) and returns the updated hike.
+pub fn set_kind(db: &Db, id: i64, value: &str) -> Result<HikeDetails, String> {
+    db.set_kind(id, value).map_err(|e| e.to_string())?;
+    hike(db, id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -168,6 +176,34 @@ mod tests {
         );
         assert_eq!(
             update_note(&db, 4, "x"),
+            Err("no hike with id 4".to_string())
+        );
+    }
+
+    // --- Kind edit ---------------------------------------------------------------------------
+
+    #[test]
+    fn a_kind_is_set_trimmed_and_returned() {
+        let db = db_with(&[3]);
+        let h = set_kind(&db, 3, "  Walking ").unwrap();
+        assert_eq!((h.id, h.kind.as_deref()), (3, Some("Walking")));
+        assert_eq!(hike(&db, 3).unwrap(), h);
+    }
+
+    #[test]
+    fn an_empty_kind_clears_it() {
+        let db = db_with(&[3]);
+        set_kind(&db, 3, "cycling").unwrap();
+        assert_eq!(set_kind(&db, 3, "").unwrap().kind, None);
+        set_kind(&db, 3, "cycling").unwrap();
+        assert_eq!(set_kind(&db, 3, "   ").unwrap().kind, None);
+    }
+
+    #[test]
+    fn setting_the_kind_of_an_unknown_hike_is_an_error() {
+        let db = db_with(&[3]);
+        assert_eq!(
+            set_kind(&db, 4, "walking"),
             Err("no hike with id 4".to_string())
         );
     }

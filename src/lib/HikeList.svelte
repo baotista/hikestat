@@ -12,7 +12,13 @@
 
   // The hikes of one bucket (a bar of the chart), fetched from its `hikeIds`.
   // `version` changes on every reload (focus, ⌘R): the hikes are fetched again.
-  let { title, ids, version }: { title: string; ids: number[]; version: number } = $props();
+  // `onchanged` is called after the panel saved an edit.
+  let {
+    title,
+    ids,
+    version,
+    onchanged,
+  }: { title: string; ids: number[]; version: number; onchanged?: () => void } = $props();
 
   let hikes = $state<HikeDetails[] | null>(null);
   let failure = $state<string | null>(null);
@@ -76,7 +82,7 @@
 </section>
 
 {#if opened !== null}
-  <HikePanel id={opened} {version} onclose={() => (opened = null)} {onupdated} />
+  <HikePanel id={opened} {version} onclose={() => (opened = null)} {onupdated} {onchanged} />
 {/if}
 
 <style>

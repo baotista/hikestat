@@ -12,6 +12,10 @@ year, from the year of the first hike to the current year), with ‹ › to move
 or years, plus the database it uses and whether it can be opened. It opens on the current week. Built with [Tauri](https://v2.tauri.app) v2 and Svelte 5 + TypeScript (see
 [ADR 0001](docs/adr/0001-tauri-with-svelte-frontend.md)).
 
+In a hike's panel, the kind can be edited (free text, suggesting the kinds already in the
+database; blank sets it back to Not set). It is saved on blur or Enter, and the dashboard and the
+kind filter reload right away.
+
 ## Prerequisites
 
 - Rust 1.85 or newer (2024 edition)
