@@ -15,8 +15,12 @@ pub struct HikeId(#[specta(type = specta_typescript::Number)] pub i64);
 pub struct HikeDetails {
     #[specta(type = specta_typescript::Number)]
     pub id: i64,
-    /// The raw GPX name.
+    /// The raw GPX name, never modified.
     pub name: Option<String>,
+    /// The title chosen by the user, shown instead of `name` when set.
+    pub title: Option<String>,
+    /// Free text written by the user.
+    pub note: Option<String>,
     pub kind: Option<String>,
     /// Seconds since the Unix epoch (UTC).
     #[specta(type = Option<specta_typescript::Number>)]
@@ -40,6 +44,8 @@ impl From<Hike> for HikeDetails {
         Self {
             id: h.id,
             name: h.name,
+            title: h.title,
+            note: h.note,
             kind: h.kind,
             started_at: h.started_at,
             start_tz: h.start_tz,
@@ -73,6 +79,20 @@ pub fn hikes(db: &Db, ids: &[i64]) -> Result<Vec<HikeDetails>, String> {
         }
     }
     Ok(found)
+}
+
+// Edits of the user's own fields. An empty or whitespace-only value clears the field.
+
+/// Sets (or clears, if blank) the title of hike `id` and returns the updated hike.
+pub fn update_title(db: &Db, id: i64, value: &str) -> Result<HikeDetails, String> {
+    db.set_title(id, Some(value)).map_err(|e| e.to_string())?;
+    hike(db, id)
+}
+
+/// Sets (or clears, if blank) the note of hike `id` and returns the updated hike.
+pub fn update_note(db: &Db, id: i64, value: &str) -> Result<HikeDetails, String> {
+    db.set_note(id, Some(value)).map_err(|e| e.to_string())?;
+    hike(db, id)
 }
 
 #[cfg(test)]
@@ -115,5 +135,40 @@ mod tests {
             .collect();
         assert_eq!(ids, vec![3, 1]);
         assert_eq!(hikes(&db, &[]).unwrap(), vec![]);
+    }
+
+    #[test]
+    fn a_title_is_set_trimmed_then_cleared_and_the_name_is_kept() {
+        let db = db_with(&[3]);
+        let h = update_title(&db, 3, "  Mont Aiguille ").unwrap();
+        assert_eq!(
+            (h.title.as_deref(), h.name.as_deref()),
+            (Some("Mont Aiguille"), Some("h3"))
+        );
+        assert_eq!(hike(&db, 3).unwrap(), h, "the edit is stored");
+
+        let h = update_title(&db, 3, "   ").unwrap();
+        assert_eq!((h.title, h.name.as_deref()), (None, Some("h3")));
+    }
+
+    #[test]
+    fn a_note_is_set_with_its_line_breaks_then_cleared() {
+        let db = db_with(&[3]);
+        let h = update_note(&db, 3, "Snow.\n\nGreat view.\n").unwrap();
+        assert_eq!(h.note.as_deref(), Some("Snow.\n\nGreat view."));
+        assert_eq!(update_note(&db, 3, "").unwrap().note, None);
+    }
+
+    #[test]
+    fn editing_an_unknown_hike_is_an_error() {
+        let db = db_with(&[3]);
+        assert_eq!(
+            update_title(&db, 4, "x"),
+            Err("no hike with id 4".to_string())
+        );
+        assert_eq!(
+            update_note(&db, 4, "x"),
+            Err("no hike with id 4".to_string())
+        );
     }
 }

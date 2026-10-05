@@ -99,6 +99,38 @@ async fn kinds<R: Runtime>(app: AppHandle<R>) -> Result<Vec<String>, String> {
     .await
 }
 
+/// Sets the title of hike `id` to `value` (trimmed; empty clears it, falling back to the raw
+/// name) and returns the updated hike.
+#[tauri::command]
+#[specta::specta]
+async fn update_title<R: Runtime>(
+    app: AppHandle<R>,
+    id: HikeId,
+    value: String,
+) -> Result<HikeDetails, String> {
+    blocking(move || {
+        let db = Db::open_existing(&db_path(&app)?).map_err(|e| e.to_string())?;
+        hike::update_title(&db, id.0, &value)
+    })
+    .await
+}
+
+/// Sets the note of hike `id` to `value` (trimmed, inner line breaks kept; empty clears it) and
+/// returns the updated hike.
+#[tauri::command]
+#[specta::specta]
+async fn update_note<R: Runtime>(
+    app: AppHandle<R>,
+    id: HikeId,
+    value: String,
+) -> Result<HikeDetails, String> {
+    blocking(move || {
+        let db = Db::open_existing(&db_path(&app)?).map_err(|e| e.to_string())?;
+        hike::update_note(&db, id.0, &value)
+    })
+    .await
+}
+
 /// Points the app at `path` (or back at the default path with `null`), remembers it, and returns
 /// the new status.
 #[tauri::command]
@@ -122,7 +154,9 @@ fn specta_builder() -> Builder<tauri::Wry> {
         dashboard::<tauri::Wry>,
         hike::<tauri::Wry>,
         hikes::<tauri::Wry>,
-        kinds::<tauri::Wry>
+        kinds::<tauri::Wry>,
+        update_title::<tauri::Wry>,
+        update_note::<tauri::Wry>
     ])
 }
 

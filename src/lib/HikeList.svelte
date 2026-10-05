@@ -1,7 +1,14 @@
 <script lang="ts">
   import { commands, type HikeDetails } from "../bindings";
   import HikePanel from "./HikePanel.svelte";
-  import { formatDistance, formatDuration, formatElevation, formatLocalDate, orMissing } from "./format";
+  import {
+    displayName,
+    formatDistance,
+    formatDuration,
+    formatElevation,
+    formatLocalDate,
+    orMissing,
+  } from "./format";
 
   // The hikes of one bucket (a bar of the chart), fetched from its `hikeIds`.
   // `version` changes on every reload (focus, ⌘R): the hikes are fetched again.
@@ -33,6 +40,11 @@
       }
     });
   });
+
+  // An edit saved in the panel (title, note) replaces the listed hike, without refetching.
+  function onupdated(updated: HikeDetails) {
+    if (hikes) hikes = hikes.map((h) => (h.id === updated.id ? updated : h));
+  }
 </script>
 
 <section class="list" aria-label={`Hikes of ${title}`}>
@@ -49,7 +61,7 @@
       {#each hikes as hike (hike.id)}
         <li>
           <button class="row" aria-pressed={opened === hike.id} onclick={() => (opened = hike.id)}>
-            <span class="name">{hike.name ?? "Untitled"}</span>
+            <span class="name">{displayName(hike)}</span>
             <span class="date">{formatLocalDate(hike.startedAt, hike.startTz)}</span>
             <span class="stats">
               <span title="Distance">{orMissing(hike.distanceM, formatDistance)}</span>
@@ -64,7 +76,7 @@
 </section>
 
 {#if opened !== null}
-  <HikePanel id={opened} {version} onclose={() => (opened = null)} />
+  <HikePanel id={opened} {version} onclose={() => (opened = null)} {onupdated} />
 {/if}
 
 <style>

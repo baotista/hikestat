@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MISSING,
+  displayName,
   effectiveZone,
   formatBarLabel,
   formatBucket,
@@ -305,5 +306,21 @@ describe("formatWithoutElevation", () => {
   it("pluralises the number of hikes", () => {
     expect(formatWithoutElevation(1)).toBe("1 hike without elevation");
     expect(formatWithoutElevation(3)).toBe("3 hikes without elevation");
+  });
+});
+
+describe("displayName", () => {
+  it("prefers the title", () => {
+    expect(displayName({ title: "Tour du Mont Aiguille", name: "Track 2026-09-12" })).toBe("Tour du Mont Aiguille");
+  });
+  it("falls back to the raw name without a title", () => {
+    expect(displayName({ title: null, name: "Track 2026-09-12" })).toBe("Track 2026-09-12");
+  });
+  it("treats a blank title as unset", () => {
+    expect(displayName({ title: "  ", name: "Track 2026-09-12" })).toBe("Track 2026-09-12");
+  });
+  it("is Untitled with neither", () => {
+    expect(displayName({ title: null, name: null })).toBe("Untitled");
+    expect(displayName({ title: null, name: "" })).toBe("Untitled");
   });
 });
