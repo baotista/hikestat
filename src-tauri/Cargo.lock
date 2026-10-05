@@ -1445,7 +1445,7 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 [[package]]
 name = "hikestat"
 version = "0.2.0"
-source = "git+ssh://git@github.com/baotista/hikestats-ingester.git?tag=v0.2.0#f7c95f7709682b88c09aa82d8aacca2a0dcfb596"
+source = "git+ssh://git@github.com/baotista/hikestats-ingester.git?rev=49a45fa5b5585aa8353d7eea21d947a0f1d333d1#49a45fa5b5585aa8353d7eea21d947a0f1d333d1"
 dependencies = [
  "anyhow",
  "clap",
@@ -1464,6 +1464,7 @@ name = "hikestat-app"
 version = "0.1.0"
 dependencies = [
  "hikestat",
+ "jiff",
  "serde",
  "serde_json",
  "specta",
@@ -3288,6 +3289,7 @@ version = "2.0.0-rc.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38f9a30cbcbb7011f1da7d73483983bf838af123883e45f2b36ed76328df9c50"
 dependencies = [
+ "jiff",
  "paste",
  "rustc_version",
  "specta-macros",
