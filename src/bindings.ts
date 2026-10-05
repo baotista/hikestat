@@ -11,9 +11,37 @@ export const commands = {
 	 *  the new status.
 	 */
 	chooseDb: (path: string | null) => typedError<DbStatus, string>(__TAURI_INVOKE("choose_db", { path })),
+	/**
+	 *  The hikes of the `view` window containing `anchor` (today in the machine's time zone if
+	 *  `null`), keeping those matching `kind_filter`.
+	 */
+	dashboard: (view: View, anchor: string | null, kindFilter: KindFilter) => typedError<Dashboard, string>(__TAURI_INVOKE("dashboard", { view, anchor, kindFilter })),
 };
 
 /* Types */
+export type Bucket = {
+	/**  First local date of the bucket (the day itself in the week view). */
+	start: string,
+	metrics: Metrics,
+	/**  The bucket's hikes, in the order they were given. */
+	hikeIds: number[],
+};
+
+export type Dashboard = {
+	view: View,
+	/**  First and last local dates of the window, both included. */
+	first: string,
+	last: string,
+	/**  In chronological order, empty ones included. */
+	buckets: Bucket[],
+	totals: Metrics,
+	/**  Hikes of the window whose ascent is missing. */
+	withoutElevation: number,
+	/**  Anchors of the previous and next windows (their first date). */
+	previous: string,
+	next: string,
+};
+
 export type DbStatus = { state: "ready"; path: string; hikeCount: number } | 
 /**  No file at `path`; nothing was created. */
 { state: "missing"; path: string } | 
@@ -21,6 +49,26 @@ export type DbStatus = { state: "ready"; path: string; hikeCount: number } |
 { state: "tooNew"; path: string } | 
 /**  Any other failure (not a database, permissions…). */
 { state: "error"; path: string; message: string };
+
+/**  Which hikes are counted, by kind. */
+export type KindFilter = { filter: "all" } | 
+/**  Hikes without a kind. */
+{ filter: "notSet" } | 
+/**  Hikes of exactly this kind (case-sensitive, as stored). */
+{ filter: "kind"; kind: string };
+
+/**  Summed metrics. A missing (NULL) metric counts as 0. */
+export type Metrics = {
+	distanceM: number | null,
+	ascentM: number | null,
+	movingS: number,
+	hikeCount: number,
+};
+
+/**  How the dashboard cuts time. Only the week exists so far; month, year and all come next. */
+export type View = 
+/**  An ISO week, one bucket per day, Monday to Sunday. */
+"week";
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

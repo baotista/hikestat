@@ -4,8 +4,9 @@ Hikestat is a local, single-user macOS desktop app to look at the hikes imported
 [`hikestat` CLI](https://github.com/baotista/hikestats-ingester) (the ingester). It opens the same
 SQLite database as the CLI, through the same `hikestat` library, and never imports GPX itself.
 
-For now the app shows which database it uses and whether it can be opened (with its number of
-hikes). Built with [Tauri](https://v2.tauri.app) v2 and Svelte 5 + TypeScript (see
+For now the app shows the week view of the dashboard: the current ISO week's total distance and
+one bar per day, with ‹ › to move week by week, plus the database it uses and whether it can be
+opened. Built with [Tauri](https://v2.tauri.app) v2 and Svelte 5 + TypeScript (see
 [ADR 0001](docs/adr/0001-tauri-with-svelte-frontend.md)).
 
 ## Prerequisites
@@ -30,6 +31,7 @@ Other checks:
 
 ```sh
 pnpm check                            # svelte-check (TypeScript)
+pnpm test                             # vitest (formatting helpers)
 pnpm build                            # frontend only
 cd src-tauri && cargo test            # Rust unit tests (also regenerates src/bindings.ts)
 cd src-tauri && cargo clippy --all-targets
@@ -39,16 +41,30 @@ The TypeScript types and command wrappers in `src/bindings.ts` are generated fro
 commands by [`tauri-specta`](https://github.com/specta-rs/tauri-specta) in debug builds (and by
 `cargo test`). The file is committed: don't edit it by hand.
 
+## Looking at the dashboard without your data
+
+`src-tauri/examples/demo_db.rs` creates a throwaway database with a few made-up hikes last week and
+this week (one in Tokyo, one crossing midnight, one without elevation):
+
+```sh
+cd src-tauri && cargo run --example demo_db -- /tmp/hikestat-demo.db
+```
+
+Run the app, then **Settings → Choose file…** and pick `/tmp/hikestat-demo.db` (**Use default
+location** switches back). Note that the app opens the default database on start, before you can
+choose the demo file.
+
 ## Install the app and the CLI from the same library tag
 
-The app depends on the `hikestat` library through a git dependency pinned to a tag (`v0.2.0`, see
-`src-tauri/Cargo.toml`). The library owns the database schema and the app applies its migrations
+The app depends on the `hikestat` library through a git dependency pinned to a tag (see
+`src-tauri/Cargo.toml`; temporarily a commit `rev`, until the library's read API is tagged
+`v0.3.0`). The library owns the database schema and the app applies its migrations
 when it opens the database ([ADR 0002](docs/adr/0002-shared-database-owned-by-the-library.md)):
 an app built on a newer tag would migrate the database, and an older CLI would then refuse to write
 to it. **Always install the app and the `hikestat` CLI from the same library tag**, for example:
 
 ```sh
-cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.2.0
+cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.3.0
 ```
 
 If the database is newer than the library bundled in the app, the app says so, writes nothing, and

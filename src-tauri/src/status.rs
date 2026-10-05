@@ -25,10 +25,10 @@ pub enum DbStatus {
 /// Opens the database at `path` without ever creating it, and reports its status.
 pub fn status_of(path: &Path) -> DbStatus {
     let shown = path.display().to_string();
-    match Db::open_existing(path).and_then(|db| count_hikes(&db)) {
-        Ok(hike_count) => DbStatus::Ready {
+    match Db::open_existing(path).and_then(|db| db.list_hikes()) {
+        Ok(hikes) => DbStatus::Ready {
             path: shown,
-            hike_count,
+            hike_count: hikes.len() as u32,
         },
         Err(hikestat::Error::DatabaseNotFound { .. }) => DbStatus::Missing { path: shown },
         Err(hikestat::Error::DatabaseTooNew { .. }) => DbStatus::TooNew { path: shown },
@@ -37,13 +37,6 @@ pub fn status_of(path: &Path) -> DbStatus {
             message: err.to_string(),
         },
     }
-}
-
-// Raw SQL until the library gets its read API (issue #3); it will move there.
-fn count_hikes(db: &Db) -> hikestat::Result<u32> {
-    Ok(db
-        .connection()
-        .query_row("SELECT count(*) FROM hikes", [], |r| r.get(0))?)
 }
 
 #[cfg(test)]

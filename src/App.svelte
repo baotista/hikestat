@@ -2,11 +2,16 @@
   import { onMount } from "svelte";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { commands, type DbStatus } from "./bindings";
+  import Dashboard from "./lib/Dashboard.svelte";
   import Settings from "./lib/Settings.svelte";
 
   let status = $state<DbStatus | null>(null);
   let failure = $state<string | null>(null);
-  let screen = $state<"status" | "settings">("status");
+  let screen = $state<"dashboard" | "settings">("dashboard");
+  // Bumped on every successful reload so the dashboard fetches its data again.
+  let version = $state(0);
+  // Window shown by the dashboard, kept here so that it survives a visit to Settings.
+  let anchor = $state<string | null>(null);
 
   // Only the latest request may update the screen (focus and ⌘R can overlap).
   let latest = 0;
@@ -18,6 +23,7 @@
     if (result.status === "ok") {
       status = result.data;
       failure = null;
+      version++;
     } else {
       failure = result.error;
     }
@@ -50,7 +56,7 @@
 <header>
   <h1>Hikestat</h1>
   <nav>
-    <button aria-pressed={screen === "status"} onclick={() => (screen = "status")}>Status</button>
+    <button aria-pressed={screen === "dashboard"} onclick={() => (screen = "dashboard")}>Dashboard</button>
     <button aria-pressed={screen === "settings"} onclick={() => (screen = "settings")}>Settings</button>
   </nav>
 </header>
@@ -65,10 +71,7 @@
   {:else if status === null}
     <p class="muted">Loading…</p>
   {:else if status.state === "ready"}
-    <p class="count">
-      <strong>{status.hikeCount}</strong>
-      {status.hikeCount === 1 ? "hike" : "hikes"}
-    </p>
+    <Dashboard {version} bind:anchor />
   {:else if status.state === "missing"}
     <p class="message warning">
       No database at <code>{status.path}</code> — run <code>hikestat import</code> or
@@ -85,6 +88,9 @@
 
 <footer>
   Database: <code>{status?.path ?? "…"}</code>
+  {#if status?.state === "ready"}
+    · {status.hikeCount} {status.hikeCount === 1 ? "hike" : "hikes"}
+  {/if}
 </footer>
 
 <style>
@@ -119,13 +125,6 @@
     border-top: 1px solid var(--border);
     background: var(--surface);
     color: var(--muted);
-  }
-  .count {
-    font-size: 1.4rem;
-  }
-  .count strong {
-    font-size: 2.4rem;
-    color: var(--accent);
   }
   .message {
     padding: 12px 16px;
