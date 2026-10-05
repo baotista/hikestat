@@ -88,6 +88,17 @@ async fn hikes<R: Runtime>(
     .await
 }
 
+/// The distinct kinds of the hikes, as stored, sorted case-insensitively (for the kind filter).
+#[tauri::command]
+#[specta::specta]
+async fn kinds<R: Runtime>(app: AppHandle<R>) -> Result<Vec<String>, String> {
+    blocking(move || {
+        let db = Db::open_existing(&db_path(&app)?).map_err(|e| e.to_string())?;
+        db.kinds().map_err(|e| e.to_string())
+    })
+    .await
+}
+
 /// Points the app at `path` (or back at the default path with `null`), remembers it, and returns
 /// the new status.
 #[tauri::command]
@@ -110,7 +121,8 @@ fn specta_builder() -> Builder<tauri::Wry> {
         choose_db::<tauri::Wry>,
         dashboard::<tauri::Wry>,
         hike::<tauri::Wry>,
-        hikes::<tauri::Wry>
+        hikes::<tauri::Wry>,
+        kinds::<tauri::Wry>
     ])
 }
 

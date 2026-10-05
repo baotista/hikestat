@@ -6,7 +6,7 @@ SQLite database as the CLI, through the same `hikestat` library, and never impor
 
 For now the app shows the dashboard's total and bar chart of a chosen metric (distance, ascent,
 moving time or number of hikes; with ascent, the header also says how many hikes have no elevation
-data) in four views: W (an ISO week,
+data), filtered by kind (all, not set, or one kind), in four views: W (an ISO week,
 one bar per day), M (a month, one bar per day), Y (a year, one bar per month) and All (one bar per
 year, from the year of the first hike to the current year), with ‹ › to move between weeks, months
 or years, plus the database it uses and whether it can be opened. It opens on the current week. Built with [Tauri](https://v2.tauri.app) v2 and Svelte 5 + TypeScript (see
@@ -60,14 +60,13 @@ choose the demo file.
 ## Install the app and the CLI from the same library tag
 
 The app depends on the `hikestat` library through a git dependency pinned to a tag (see
-`src-tauri/Cargo.toml`; temporarily a commit `rev`, until the library's `Db::hike` is merged and
-tagged). The library owns the database schema and the app applies its migrations
+`src-tauri/Cargo.toml`). The library owns the database schema and the app applies its migrations
 when it opens the database ([ADR 0002](docs/adr/0002-shared-database-owned-by-the-library.md)):
 an app built on a newer tag would migrate the database, and an older CLI would then refuse to write
 to it. **Always install the app and the `hikestat` CLI from the same library tag**, for example:
 
 ```sh
-cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.4.0
+cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.5.0
 ```
 
 If the database is newer than the library bundled in the app, the app says so, writes nothing, and

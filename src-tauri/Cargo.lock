@@ -1444,8 +1444,8 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hikestat"
-version = "0.4.0"
-source = "git+ssh://git@github.com/baotista/hikestats-ingester.git?tag=v0.4.0#b6313a84110ddf27f7f03225e46d212a7c482125"
+version = "0.5.0"
+source = "git+ssh://git@github.com/baotista/hikestats-ingester.git?tag=v0.5.0#98109ca482e9ff6c551611b0b1be5fd66307824a"
 dependencies = [
  "anyhow",
  "clap",

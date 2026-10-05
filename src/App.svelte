@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  import { commands, type DbStatus, type View } from "./bindings";
+  import { commands, type DbStatus, type KindFilter, type View } from "./bindings";
   import Dashboard from "./lib/Dashboard.svelte";
   import Settings from "./lib/Settings.svelte";
   import type { Metric } from "./lib/format";
@@ -17,6 +17,8 @@
   let view = $state<View>("week");
   // And for the charted metric; distance by default.
   let metric = $state<Metric>("distance");
+  // Same for the kind filter; the app opens on All.
+  let kindFilter = $state<KindFilter>({ filter: "all" });
 
   // Only the latest request may update the screen (focus and ⌘R can overlap).
   let latest = 0;
@@ -76,7 +78,7 @@
   {:else if status === null}
     <p class="muted">Loading…</p>
   {:else if status.state === "ready"}
-    <Dashboard {version} bind:anchor bind:view bind:metric />
+    <Dashboard {version} bind:anchor bind:view bind:metric bind:kindFilter />
   {:else if status.state === "missing"}
     <p class="message warning">
       No database at <code>{status.path}</code> — run <code>hikestat import</code> or
