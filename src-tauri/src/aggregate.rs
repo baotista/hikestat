@@ -245,6 +245,8 @@ mod tests {
             duration_moving_s: Some(3000),
             avg_speed_mps: Some(1.0),
             stats_version: Some(2),
+            title: None,
+            note: None,
         }
     }
 

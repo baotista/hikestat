@@ -22,6 +22,16 @@ export const commands = {
 	hikes: (ids: HikeId[]) => typedError<HikeDetails[], string>(__TAURI_INVOKE("hikes", { ids })),
 	/**  The distinct kinds of the hikes, as stored, sorted case-insensitively (for the kind filter). */
 	kinds: () => typedError<string[], string>(__TAURI_INVOKE("kinds")),
+	/**
+	 *  Sets the title of hike `id` to `value` (trimmed; empty clears it, falling back to the raw
+	 *  name) and returns the updated hike.
+	 */
+	updateTitle: (id: HikeId, value: string) => typedError<HikeDetails, string>(__TAURI_INVOKE("update_title", { id, value })),
+	/**
+	 *  Sets the note of hike `id` to `value` (trimmed, inner line breaks kept; empty clears it) and
+	 *  returns the updated hike.
+	 */
+	updateNote: (id: HikeId, value: string) => typedError<HikeDetails, string>(__TAURI_INVOKE("update_note", { id, value })),
 };
 
 /* Types */
@@ -59,8 +69,12 @@ export type DbStatus = { state: "ready"; path: string; hikeCount: number } |
 /**  A hike without its points. Units and nullability follow the database. */
 export type HikeDetails = {
 	id: number,
-	/**  The raw GPX name. */
+	/**  The raw GPX name, never modified. */
 	name: string | null,
+	/**  The title chosen by the user, shown instead of `name` when set. */
+	title: string | null,
+	/**  Free text written by the user. */
+	note: string | null,
 	kind: string | null,
 	/**  Seconds since the Unix epoch (UTC). */
 	startedAt: number | null,

@@ -176,6 +176,12 @@ export function formatDateTime(epochSeconds: number | null, zone: string | null)
   });
 }
 
+/** The name a hike is shown under: its title if set, otherwise its raw GPX name, otherwise
+ * "Untitled". A blank value counts as unset. */
+export function displayName(hike: { title: string | null; name: string | null }): string {
+  return [hike.title, hike.name].map((v) => v?.trim()).find((v) => v) ?? "Untitled";
+}
+
 // Dashboard metrics. Bars and ticks are in the metric's chart unit: km, m, hours, hikes.
 
 const plain = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
