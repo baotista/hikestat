@@ -58,8 +58,8 @@ choose the demo file.
 ## Install the app and the CLI from the same library tag
 
 The app depends on the `hikestat` library through a git dependency pinned to a tag (see
-`src-tauri/Cargo.toml`; temporarily a commit `rev`, until the library's read API is tagged
-`v0.3.0`). The library owns the database schema and the app applies its migrations
+`src-tauri/Cargo.toml`; temporarily a commit `rev`, until the library's `Db::hike` is merged and
+tagged). The library owns the database schema and the app applies its migrations
 when it opens the database ([ADR 0002](docs/adr/0002-shared-database-owned-by-the-library.md)):
 an app built on a newer tag would migrate the database, and an older CLI would then refuse to write
 to it. **Always install the app and the `hikestat` CLI from the same library tag**, for example:

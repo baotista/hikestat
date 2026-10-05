@@ -16,7 +16,24 @@
     bars,
     formatTick,
     label,
-  }: { bars: Bar[]; formatTick: (value: number) => string; label: string } = $props();
+    selected = null,
+    onselect,
+  }: {
+    bars: Bar[];
+    formatTick: (value: number) => string;
+    label: string;
+    /** Key of the highlighted bar. */
+    selected?: string | null;
+    /** Called with the key of a clicked bar (also Enter or Space when focused). */
+    onselect?: (key: string) => void;
+  } = $props();
+
+  function onKeydown(event: KeyboardEvent, key: string) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onselect?.(key);
+    }
+  }
 
   const HEIGHT = 240;
   const TOP = 24; // room for the hover value above the tallest bar
@@ -58,7 +75,7 @@
 </script>
 
 <figure bind:clientWidth={width}>
-  <svg {width} height={HEIGHT} role="img" aria-label={label}>
+  <svg {width} height={HEIGHT} role="group" aria-label={label}>
     {#each ticks as tick (tick)}
       <line class="grid" class:baseline={tick === 0} x1="0" x2={plotWidth} y1={y(tick)} y2={y(tick)} />
       <text class="tick" x={plotWidth + 8} y={y(tick)} dy="0.35em">{formatTick(tick)}</text>
@@ -66,18 +83,34 @@
 
     {#each bars as bar, i (bar.key)}
       <g
-        role="listitem"
+        role="button"
+        tabindex="0"
         aria-label={bar.description}
+        aria-pressed={selected === bar.key}
+        class:clickable={onselect !== undefined}
         onmouseenter={() => (hovered = i)}
         onmouseleave={() => (hovered = null)}
+        onclick={() => onselect?.(bar.key)}
+        onkeydown={(e) => onKeydown(e, bar.key)}
       >
-        <!-- The whole column is the hover target, larger than the bar. -->
-        <rect class="column" class:active={hovered === i} x={i * band + 2} y={TOP} width={band - 4} height={plotHeight} rx="6" />
+        <!-- The whole column is the hover and click target, larger than the bar. -->
+        <rect
+          class="column"
+          class:active={hovered === i}
+          class:selected={selected === bar.key}
+          x={i * band + 2}
+          y={TOP}
+          width={band - 4}
+          height={plotHeight}
+          rx="6"
+        />
         {#if bar.value > 0}
-          <path class="bar" d={barPath(i, bar.value)} />
+          <path class="bar" class:dimmed={selected !== null && selected !== bar.key} d={barPath(i, bar.value)} />
         {/if}
-        <text class="day" x={i * band + band / 2} y={HEIGHT - 8} text-anchor="middle">{bar.label}</text>
-        {#if hovered === i}
+        <text class="day" class:selected={selected === bar.key} x={i * band + band / 2} y={HEIGHT - 8} text-anchor="middle"
+          >{bar.label}</text
+        >
+        {#if hovered === i || selected === bar.key}
           <text class="value" x={i * band + band / 2} y={y(bar.value) - 8} text-anchor="middle">
             {formatTick(bar.value)}
           </text>
@@ -124,10 +157,32 @@
   .column {
     fill: transparent;
   }
-  .column.active {
+  .column.active,
+  .column.selected {
     fill: var(--surface);
+  }
+  .column.selected {
+    stroke: var(--accent);
+    stroke-width: 1.5;
+  }
+  .clickable {
+    cursor: pointer;
+  }
+  g:focus {
+    outline: none;
+  }
+  g:focus-visible .column {
+    stroke: var(--accent);
+    stroke-width: 2;
+  }
+  .day.selected {
+    fill: var(--accent);
+    font-weight: 600;
   }
   .bar {
     fill: var(--chart-bar);
+  }
+  .bar.dimmed {
+    opacity: 0.45;
   }
 </style>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { commands, type Dashboard, type KindFilter, type View } from "../bindings";
   import BarChart, { type Bar } from "./BarChart.svelte";
+  import HikeList from "./HikeList.svelte";
   import { formatBarLabel, formatBucket, formatDistance, formatWindow } from "./format";
 
   // `version` changes on every reload (focus, ⌘R): the dashboard is fetched again.
@@ -42,6 +43,20 @@
       }
     });
   });
+
+  // The clicked bar, tied to the window it was clicked in: moving to another window (or view)
+  // clears it, a reload of the same window keeps it and refreshes its hikes.
+  let selection = $state<{ window: string; key: string } | null>(null);
+  const windowOf = (d: Dashboard) => `${d.view}:${d.first}`;
+  const selected = $derived(
+    dashboard && selection?.window === windowOf(dashboard)
+      ? (dashboard.buckets.find((b) => b.start === selection!.key) ?? null)
+      : null,
+  );
+  function select(key: string) {
+    if (!dashboard) return;
+    selection = selected?.start === key ? null : { window: windowOf(dashboard), key };
+  }
 
   const km = (metres: number | null) => (metres ?? 0) / 1000;
 
@@ -91,7 +106,15 @@
       {bars}
       formatTick={(v) => formatDistance(v * 1000)}
       label={`Distance per ${BUCKET[dashboard.view]}, ${formatWindow(dashboard.view, dashboard.first, dashboard.last)}`}
+      selected={selected?.start ?? null}
+      onselect={select}
     />
+
+    {#if selected}
+      {#key selected.start}
+        <HikeList title={formatBucket(dashboard.view, selected.start)} ids={selected.hikeIds} {version} />
+      {/key}
+    {/if}
   {:else if !failure}
     <p class="muted">Loading…</p>
   {/if}

@@ -16,6 +16,10 @@ export const commands = {
 	 *  `null`), keeping those matching `kind_filter`. The All view runs up to today's year.
 	 */
 	dashboard: (view: View, anchor: string | null, kindFilter: KindFilter) => typedError<Dashboard, string>(__TAURI_INVOKE("dashboard", { view, anchor, kindFilter })),
+	/**  The hike with this `id`, or an error if there is none. */
+	hike: (id: HikeId) => typedError<HikeDetails, string>(__TAURI_INVOKE("hike", { id })),
+	/**  The hikes with these `ids` (a bucket's `hikeIds`), in the same order; unknown ids are left out. */
+	hikes: (ids: HikeId[]) => typedError<HikeDetails[], string>(__TAURI_INVOKE("hikes", { ids })),
 };
 
 /* Types */
@@ -49,6 +53,29 @@ export type DbStatus = { state: "ready"; path: string; hikeCount: number } |
 { state: "tooNew"; path: string } | 
 /**  Any other failure (not a database, permissions…). */
 { state: "error"; path: string; message: string };
+
+/**  A hike without its points. Units and nullability follow the database. */
+export type HikeDetails = {
+	id: number,
+	/**  The raw GPX name. */
+	name: string | null,
+	kind: string | null,
+	/**  Seconds since the Unix epoch (UTC). */
+	startedAt: number | null,
+	/**  IANA time zone name of the start, e.g. `Europe/Paris`. */
+	startTz: string | null,
+	distanceM: number | null,
+	ascentM: number | null,
+	descentM: number | null,
+	minEleM: number | null,
+	maxEleM: number | null,
+	durationTotalS: number | null,
+	durationMovingS: number | null,
+	avgSpeedMps: number | null,
+};
+
+/**  A hike's id as a command argument (specta refuses a bare `i64`: it may not fit a TypeScript `number`). */
+export type HikeId = number;
 
 /**  Which hikes are counted, by kind. */
 export type KindFilter = { filter: "all" } | 
