@@ -1,0 +1,6 @@
+.DS_Store
+node_modules
+/dist
+
+# Local, uncommitted Cargo [patch] pointing at the sibling hikestats-ingester checkout (see README).
+/.cargo/config.toml
