@@ -2,6 +2,7 @@
   import { commands, type Dashboard, type KindFilter, type View } from "../bindings";
   import BarChart, { type Bar } from "./BarChart.svelte";
   import HikeList from "./HikeList.svelte";
+  import KindPicker from "./KindPicker.svelte";
   import {
     formatBarLabel,
     formatBucket,
@@ -16,7 +17,8 @@
   } from "./format";
 
   // `version` changes on every reload (focus, ⌘R): the dashboard is fetched again.
-  // `anchor`, `view` and `metric` are owned by the parent so they survive a visit to Settings.
+  // `anchor`, `view`, `metric` and `kindFilter` are owned by the parent so they survive a visit to
+  // Settings.
   // `anchor` is a date (`null` = today, in the machine's time zone, resolved in Rust): every view
   // but All shows the window containing it, so switching views keeps it in sight.
   let {
@@ -24,7 +26,14 @@
     anchor = $bindable(null),
     view = $bindable("week"),
     metric = $bindable("distance"),
-  }: { version: number; anchor?: string | null; view?: View; metric?: Metric } = $props();
+    kindFilter = $bindable({ filter: "all" }),
+  }: {
+    version: number;
+    anchor?: string | null;
+    view?: View;
+    metric?: Metric;
+    kindFilter?: KindFilter;
+  } = $props();
 
   const VIEWS: { label: string; title: string; value: View }[] = [
     { label: "W", title: "Week", value: "week" },
@@ -34,7 +43,6 @@
   ];
   const UNIT: Record<View, string> = { week: "week", month: "month", year: "year", all: "year" };
   const BUCKET: Record<View, string> = { week: "day", month: "day", year: "month", all: "year" };
-  const ALL: KindFilter = { filter: "all" };
   const METRICS: { label: string; value: Metric }[] = [
     { label: "Distance", value: "distance" },
     { label: "Ascent", value: "ascent" },
@@ -44,6 +52,8 @@
 
   let dashboard = $state<Dashboard | null>(null);
   let failure = $state<string | null>(null);
+  // The kind filter of the dashboard shown, part of the window a selection belongs to.
+  let shownFilter = $state("");
 
   // Only the latest request may update the view (navigation and reloads can overlap).
   let latest = 0;
@@ -51,10 +61,12 @@
   $effect(() => {
     void version;
     const id = ++latest;
-    commands.dashboard(view, anchor, ALL).then((result) => {
+    const filter = $state.snapshot(kindFilter);
+    commands.dashboard(view, anchor, filter).then((result) => {
       if (id !== latest) return;
       if (result.status === "ok") {
         dashboard = result.data;
+        shownFilter = JSON.stringify(filter);
         failure = null;
       } else {
         failure = result.error;
@@ -62,10 +74,10 @@
     });
   });
 
-  // The clicked bar, tied to the window it was clicked in: moving to another window (or view)
-  // clears it, a reload of the same window keeps it and refreshes its hikes.
+  // The clicked bar, tied to the window it was clicked in: moving to another window (or view, or
+  // kind filter) clears it, a reload of the same window keeps it and refreshes its hikes.
   let selection = $state<{ window: string; key: string } | null>(null);
-  const windowOf = (d: Dashboard) => `${d.view}:${d.first}`;
+  const windowOf = (d: Dashboard) => `${d.view}:${d.first}:${shownFilter}`;
   const selected = $derived(
     dashboard && selection?.window === windowOf(dashboard)
       ? (dashboard.buckets.find((b) => b.start === selection!.key) ?? null)
@@ -96,6 +108,8 @@
       <button aria-pressed={v.value === view} title={v.title} onclick={() => (view = v.value)}>{v.label}</button>
     {/each}
   </div>
+
+  <KindPicker bind:value={kindFilter} {version} />
 
   {#if failure}
     <p class="message danger">{failure}</p>

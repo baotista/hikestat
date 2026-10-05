@@ -864,6 +864,247 @@ mod tests {
         }
     }
 
+    /// Hikes of several kinds spread over days, months and years, some without elevation.
+    fn mixed_kinds() -> Vec<Hike> {
+        let h = |id, start, k, km, ascent, moving| {
+            let mut h = kind(hike(id, start, None, km), k);
+            h.ascent_m = ascent;
+            h.duration_moving_s = Some(moving);
+            h
+        };
+        vec![
+            h(
+                1,
+                "2026-09-28T08:00:00Z",
+                Some("walking"),
+                10.0,
+                Some(300.0),
+                7200,
+            ),
+            h(
+                2,
+                "2026-09-28T09:00:00Z",
+                Some("cycling"),
+                60.0,
+                Some(500.0),
+                9000,
+            ),
+            h(3, "2026-09-30T08:00:00Z", None, 4.0, None, 3600),
+            h(4, "2026-09-30T10:00:00Z", Some("walking"), 6.0, None, 5400),
+            h(
+                5,
+                "2026-03-10T08:00:00Z",
+                Some("walking"),
+                8.0,
+                Some(200.0),
+                6000,
+            ),
+            h(6, "2024-05-01T08:00:00Z", None, 3.0, Some(50.0), 1800),
+        ]
+    }
+
+    /// The non-empty buckets: their start, hike ids and distance.
+    fn filled(d: &Dashboard) -> Vec<(Date, Vec<i64>, f64)> {
+        d.buckets
+            .iter()
+            .filter(|b| !b.hike_ids.is_empty())
+            .map(|b| (b.start, b.hike_ids.clone(), b.metrics.distance_m))
+            .collect()
+    }
+
+    fn metrics(km: f64, ascent_m: f64, moving_s: i64, hike_count: u32) -> Metrics {
+        Metrics {
+            distance_m: km * 1000.0,
+            ascent_m,
+            moving_s,
+            hike_count,
+        }
+    }
+
+    #[test]
+    fn the_kind_filter_shapes_buckets_totals_and_missing_elevation_in_every_view() {
+        let hikes = mixed_kinds();
+        let walking = KindFilter::Kind("walking".into());
+        let anchor = date(2026, 9, 28);
+        type Expected = (Vec<(Date, Vec<i64>, f64)>, Metrics, u32);
+        let cases: Vec<(View, KindFilter, Expected)> = vec![
+            (
+                View::Week,
+                KindFilter::All,
+                (
+                    vec![
+                        (date(2026, 9, 28), vec![1, 2], 70_000.0),
+                        (date(2026, 9, 30), vec![3, 4], 10_000.0),
+                    ],
+                    metrics(80.0, 800.0, 25_200, 4),
+                    2,
+                ),
+            ),
+            (
+                View::Week,
+                KindFilter::NotSet,
+                (
+                    vec![(date(2026, 9, 30), vec![3], 4_000.0)],
+                    metrics(4.0, 0.0, 3600, 1),
+                    1,
+                ),
+            ),
+            (
+                View::Week,
+                walking.clone(),
+                (
+                    vec![
+                        (date(2026, 9, 28), vec![1], 10_000.0),
+                        (date(2026, 9, 30), vec![4], 6_000.0),
+                    ],
+                    metrics(16.0, 300.0, 12_600, 2),
+                    1,
+                ),
+            ),
+            (
+                View::Month,
+                KindFilter::All,
+                (
+                    vec![
+                        (date(2026, 9, 28), vec![1, 2], 70_000.0),
+                        (date(2026, 9, 30), vec![3, 4], 10_000.0),
+                    ],
+                    metrics(80.0, 800.0, 25_200, 4),
+                    2,
+                ),
+            ),
+            (
+                View::Month,
+                KindFilter::NotSet,
+                (
+                    vec![(date(2026, 9, 30), vec![3], 4_000.0)],
+                    metrics(4.0, 0.0, 3600, 1),
+                    1,
+                ),
+            ),
+            (
+                View::Month,
+                walking.clone(),
+                (
+                    vec![
+                        (date(2026, 9, 28), vec![1], 10_000.0),
+                        (date(2026, 9, 30), vec![4], 6_000.0),
+                    ],
+                    metrics(16.0, 300.0, 12_600, 2),
+                    1,
+                ),
+            ),
+            (
+                View::Year,
+                KindFilter::All,
+                (
+                    vec![
+                        (date(2026, 3, 1), vec![5], 8_000.0),
+                        (date(2026, 9, 1), vec![1, 2, 3, 4], 80_000.0),
+                    ],
+                    metrics(88.0, 1000.0, 31_200, 5),
+                    2,
+                ),
+            ),
+            (
+                View::Year,
+                KindFilter::NotSet,
+                (
+                    vec![(date(2026, 9, 1), vec![3], 4_000.0)],
+                    metrics(4.0, 0.0, 3600, 1),
+                    1,
+                ),
+            ),
+            (
+                View::Year,
+                walking.clone(),
+                (
+                    vec![
+                        (date(2026, 3, 1), vec![5], 8_000.0),
+                        (date(2026, 9, 1), vec![1, 4], 16_000.0),
+                    ],
+                    metrics(24.0, 500.0, 18_600, 3),
+                    1,
+                ),
+            ),
+            (
+                View::All,
+                KindFilter::All,
+                (
+                    vec![
+                        (date(2024, 1, 1), vec![6], 3_000.0),
+                        (date(2026, 1, 1), vec![1, 2, 3, 4, 5], 88_000.0),
+                    ],
+                    metrics(91.0, 1050.0, 33_000, 6),
+                    2,
+                ),
+            ),
+            (
+                View::All,
+                KindFilter::NotSet,
+                (
+                    vec![
+                        (date(2024, 1, 1), vec![6], 3_000.0),
+                        (date(2026, 1, 1), vec![3], 4_000.0),
+                    ],
+                    metrics(7.0, 50.0, 5400, 2),
+                    1,
+                ),
+            ),
+            (
+                View::All,
+                walking,
+                (
+                    vec![(date(2026, 1, 1), vec![1, 4, 5], 24_000.0)],
+                    metrics(24.0, 500.0, 18_600, 3),
+                    1,
+                ),
+            ),
+        ];
+        for (view, filter, (buckets, totals, without_elevation)) in cases {
+            let d = aggregate(&hikes, view, anchor, &filter, TODAY).unwrap();
+            let label = format!("{view:?} {filter:?}");
+            assert_eq!(filled(&d), buckets, "{label}");
+            assert_eq!(d.totals, totals, "{label}");
+            assert_eq!(d.without_elevation, without_elevation, "{label}");
+            if view == View::All {
+                assert_eq!((d.first, d.last), (date(2024, 1, 1), date(2026, 12, 31)));
+            }
+        }
+    }
+
+    #[test]
+    fn the_filter_does_not_change_the_window_or_its_buckets() {
+        let hikes = mixed_kinds();
+        for view in [View::Week, View::Month, View::Year, View::All] {
+            let shape = |filter: KindFilter| {
+                let d = aggregate(&hikes, view, date(2026, 9, 28), &filter, TODAY).unwrap();
+                (d.first, d.last, days(&d), d.previous, d.next)
+            };
+            let all = shape(KindFilter::All);
+            assert_eq!(shape(KindFilter::NotSet), all, "{view:?}");
+            assert_eq!(shape(KindFilter::Kind("skiing".into())), all, "{view:?}");
+        }
+    }
+
+    #[test]
+    fn a_kind_matching_no_hike_gives_empty_buckets() {
+        let d = aggregate(
+            &mixed_kinds(),
+            View::Year,
+            date(2026, 9, 28),
+            &KindFilter::Kind("skiing".into()),
+            TODAY,
+        )
+        .unwrap();
+        assert_eq!(d.buckets.len(), 12);
+        assert_eq!(filled(&d), vec![]);
+        assert_eq!(
+            (d.totals.clone(), d.without_elevation),
+            (Metrics::default(), 0)
+        );
+    }
+
     #[test]
     fn switching_views_shows_the_window_containing_the_anchor() {
         let anchor = date(2026, 3, 18); // a Wednesday in March 2026

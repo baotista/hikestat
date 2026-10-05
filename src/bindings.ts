@@ -20,6 +20,8 @@ export const commands = {
 	hike: (id: HikeId) => typedError<HikeDetails, string>(__TAURI_INVOKE("hike", { id })),
 	/**  The hikes with these `ids` (a bucket's `hikeIds`), in the same order; unknown ids are left out. */
 	hikes: (ids: HikeId[]) => typedError<HikeDetails[], string>(__TAURI_INVOKE("hikes", { ids })),
+	/**  The distinct kinds of the hikes, as stored, sorted case-insensitively (for the kind filter). */
+	kinds: () => typedError<string[], string>(__TAURI_INVOKE("kinds")),
 };
 
 /* Types */
