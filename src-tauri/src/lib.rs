@@ -163,15 +163,14 @@ async fn update_kind<R: Runtime>(
     .await
 }
 
-/// Imports the GPX files and folders dropped on the window into the database in use, with the CLI's
-/// rules (ADR 0004), and returns what happened.
+/// Imports the GPX files and folders dropped on the window into the database in use (the first
+/// import creates it), with the CLI's rules (ADR 0004), and returns what happened.
 #[tauri::command]
 #[specta::specta]
 async fn import<R: Runtime>(app: AppHandle<R>, paths: Vec<String>) -> Result<ImportReport, String> {
     blocking(move || {
-        let mut db = Db::open_existing(&db_path(&app)?).map_err(|e| e.to_string())?;
         let paths: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).collect();
-        Ok(import::import(&mut db, &paths))
+        import::import_into(&db_path(&app)?, &paths)
     })
     .await
 }
