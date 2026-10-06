@@ -1,5 +1,6 @@
 mod aggregate;
 mod hike;
+mod import;
 mod location;
 mod status;
 mod track;
@@ -13,6 +14,7 @@ use tauri_specta::{Builder, collect_commands};
 
 use aggregate::{Dashboard, KindFilter, View};
 use hike::{HikeDetails, HikeId};
+use import::ImportReport;
 use location::Settings;
 use status::DbStatus;
 use track::MapTrack;
@@ -161,6 +163,19 @@ async fn update_kind<R: Runtime>(
     .await
 }
 
+/// Imports the GPX files and folders dropped on the window into the database in use, with the CLI's
+/// rules (ADR 0004), and returns what happened.
+#[tauri::command]
+#[specta::specta]
+async fn import<R: Runtime>(app: AppHandle<R>, paths: Vec<String>) -> Result<ImportReport, String> {
+    blocking(move || {
+        let mut db = Db::open_existing(&db_path(&app)?).map_err(|e| e.to_string())?;
+        let paths: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).collect();
+        Ok(import::import(&mut db, &paths))
+    })
+    .await
+}
+
 /// Points the app at `path` (or back at the default path with `null`), remembers it, and returns
 /// the new status.
 #[tauri::command]
@@ -188,7 +203,8 @@ fn specta_builder() -> Builder<tauri::Wry> {
         kinds::<tauri::Wry>,
         update_title::<tauri::Wry>,
         update_note::<tauri::Wry>,
-        update_kind::<tauri::Wry>
+        update_kind::<tauri::Wry>,
+        import::<tauri::Wry>
     ])
 }
 

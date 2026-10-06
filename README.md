@@ -1,8 +1,15 @@
 # Hikestat
 
-Hikestat is a local, single-user macOS desktop app to look at the hikes imported by the
-[`hikestat` CLI](https://github.com/baotista/hikestats-ingester) (the ingester). It opens the same
-SQLite database as the CLI, through the same `hikestat` library, and never imports GPX itself.
+Hikestat is a local, single-user macOS desktop app to look at your hikes. It opens the same SQLite
+database as the [`hikestat` CLI](https://github.com/baotista/hikestats-ingester) (the ingester),
+through the same `hikestat` library, and imports GPX through that library too
+([ADR 0004](docs/adr/0004-the-app-imports-gpx-through-the-library.md)).
+
+Drop GPX files or folders anywhere on the window to import them, exactly as `hikestat import` would
+(same deduplication, rejections and warnings; a folder imports the `.gpx` files directly inside it;
+anything else is rejected as "not a .gpx file"). An overlay shows while dragging and while
+importing; a banner then sums up the import (imported, already present, rejected) and the data
+reloads. A second drop during an import is refused.
 
 For now the app shows the dashboard's total and bar chart of a chosen metric (distance, ascent,
 moving time or number of hikes; with ascent, the header also says how many hikes have no elevation

@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { getCurrentWebview } from "@tauri-apps/api/webview";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { commands, type DbStatus, type KindFilter, type View } from "./bindings";
   import Dashboard from "./lib/Dashboard.svelte";
+  import ImportBanner, { type ImportBannerState } from "./lib/ImportBanner.svelte";
   import Settings from "./lib/Settings.svelte";
   import type { Metric } from "./lib/format";
 
@@ -47,13 +49,44 @@
     }
   }
 
+  // --- Import by drag and drop (ADR 0004) --------------------------------------------------------
+  // Files and folders dropped anywhere on the window, on every screen, are imported through the
+  // library with the CLI's rules. Tauri's drag and drop events carry the paths.
+
+  let dragging = $state(false);
+  let importing = $state(false);
+  let banner = $state<ImportBannerState | null>(null);
+
+  async function importDropped(paths: string[]) {
+    if (importing) {
+      banner = { notice: "An import is already running" };
+      return;
+    }
+    importing = true;
+    const result = await commands.import(paths);
+    importing = false;
+    banner = result.status === "ok" ? { report: result.data } : { error: result.error };
+    // Reload like after an edit: status, dashboard, kinds and hike list.
+    refresh();
+  }
+  // --- End of import by drag and drop ------------------------------------------------------------
+
   onMount(() => {
     refresh();
-    const unlisten = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+    const unlistenFocus = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
       if (focused) refresh();
     });
+    const unlistenDrop = getCurrentWebview().onDragDropEvent(({ payload }) => {
+      if (payload.type === "enter" || payload.type === "over") dragging = true;
+      else if (payload.type === "leave") dragging = false;
+      else {
+        dragging = false;
+        void importDropped(payload.paths);
+      }
+    });
     return () => {
-      unlisten.then((stop) => stop());
+      unlistenFocus.then((stop) => stop());
+      unlistenDrop.then((stop) => stop());
     };
   });
 </script>
@@ -93,6 +126,16 @@
     <p class="message danger">Cannot open the database: {status.message}</p>
   {/if}
 </main>
+
+{#if banner}
+  <ImportBanner state={banner} onclose={() => (banner = null)} />
+{/if}
+
+{#if dragging || importing}
+  <div class="drop-overlay" aria-live="polite">
+    <p>{importing ? "Importing…" : "Drop GPX files to import"}</p>
+  </div>
+{/if}
 
 <footer>
   Database: <code>{status?.path ?? "…"}</code>
@@ -147,6 +190,26 @@
   }
   .muted {
     color: var(--muted);
+  }
+  /* Over everything, the hike panel and the expanded map included. */
+  .drop-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgb(0 0 0 / 0.35);
+    pointer-events: none;
+  }
+  .drop-overlay p {
+    margin: 0;
+    padding: 24px 40px;
+    border: 2px dashed var(--accent);
+    border-radius: 12px;
+    background: var(--bg);
+    font-size: 1.1rem;
+    font-weight: 600;
   }
   .link {
     border: none;
