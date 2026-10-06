@@ -19,9 +19,10 @@ kind filter reload right away.
 Below the stats, the panel shows the hike's track on a map ([MapLibre GL](https://maplibre.org)):
 one line per segment, a dashed line across each gap between segments (where nothing was recorded),
 and start (filled dot) and end (ringed dot) markers. The wheel scrolls the panel; ⌘ + wheel or a
-pinch zooms the map. The background comes from [OpenFreeMap](https://openfreemap.org) (no key),
-light or dark like macOS, so it needs the network: offline, the track is drawn on a plain background
-and the next reload (focus, ⌘R) tries again. A reload keeps the map's framing; opening another hike
+pinch zooms the map. ⤢ expands it to the whole window (same framing, the wheel zooms); ✕ or Escape
+brings back the panel, and a second Escape closes the panel. The background comes from
+[OpenFreeMap](https://openfreemap.org) (no key), light or dark like macOS, so it needs the network:
+offline, the track is drawn on a plain background and the next reload (focus, ⌘R) tries again. A reload keeps the map's framing; opening another hike
 frames its track.
 
 ## Prerequisites

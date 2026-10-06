@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { Map as MapLibreMap, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
   import "maplibre-gl/dist/maplibre-gl.css";
   // MapLibre looks for its worker next to its own file, which bundling moves: Vite bundles the
@@ -10,8 +10,9 @@
   import { BACKGROUND_STYLE_URL, currentScheme, darkQuery, themeColors } from "./mapStyle";
 
   // Map of one hike's track. `version` changes on every reload: the track is fetched again, but
-  // the camera only moves when the hike changes.
-  let { id, version }: { id: number; version: number } = $props();
+  // the camera only moves when the hike changes. `expanded`: the map fills the window (bound by the
+  // panel, whose Escape closes it first).
+  let { id, version, expanded = $bindable(false) }: { id: number; version: number; expanded?: boolean } = $props();
 
   setWorkerUrl(workerUrl);
 
@@ -178,24 +179,45 @@
     });
     void applyBackground();
 
+    // The frame changes size when expanded or collapsed: the map keeps its centre and zoom.
+    const resize = new ResizeObserver(() => map?.resize());
+    resize.observe(container);
+
     const scheme = darkQuery();
     const onSchemeChange = () => void applyBackground();
     scheme.addEventListener("change", onSchemeChange);
     return () => {
       scheme.removeEventListener("change", onSchemeChange);
+      resize.disconnect();
       map?.remove();
       map = null;
     };
   });
 
-  // The wheel scrolls the panel: it only reaches the map with ⌘ (or as a trackpad pinch, which
-  // comes with ctrlKey).
+  // In the panel, the wheel scrolls the panel: it only reaches the map with ⌘ (or as a trackpad
+  // pinch, which comes with ctrlKey). Expanded, it zooms.
   function onWheelCapture(event: WheelEvent) {
-    if (!event.metaKey && !event.ctrlKey) event.stopPropagation();
+    if (!expanded && !event.metaKey && !event.ctrlKey) event.stopPropagation();
   }
+
+  // --- Expanded map ------------------------------------------------------------------------------
+
+  let expandButton = $state<HTMLButtonElement | null>(null);
+  let collapseButton = $state<HTMLButtonElement | null>(null);
+
+  // Focus follows the button that undoes the change (Escape or ✕ closes, ⤢ opens again); not on
+  // mount, where the panel focuses its own close button.
+  let wasExpanded = expanded;
+  $effect(() => {
+    const open = expanded;
+    if (open === wasExpanded) return;
+    wasExpanded = open;
+    void tick().then(() => (open ? collapseButton : expandButton)?.focus());
+  });
+  // --- End of expanded map -----------------------------------------------------------------------
 </script>
 
-<div class="frame">
+<div class="frame" class:expanded>
   <div class="map" bind:this={container} onwheelcapture={onWheelCapture}></div>
   {#if failure}
     <p class="cover danger-text">Cannot show the map: {failure}</p>
@@ -205,6 +227,13 @@
     <p class="cover">No points</p>
   {:else if backgroundUnavailable}
     <p class="notice">Map background unavailable</p>
+  {/if}
+  {#if track !== null && !isEmpty(track) && !failure}
+    {#if expanded}
+      <button bind:this={collapseButton} class="corner" aria-label="Close map" onclick={() => (expanded = false)}>✕</button>
+    {:else}
+      <button bind:this={expandButton} class="corner" aria-label="Expand map" onclick={() => (expanded = true)}>⤢</button>
+    {/if}
   {/if}
 </div>
 
@@ -217,9 +246,28 @@
     overflow: hidden;
     background: var(--surface);
   }
+  /* Expanded: the same frame over the whole window, above the panel. */
+  .frame.expanded {
+    position: fixed;
+    inset: 0;
+    height: auto;
+    border: none;
+    border-radius: 0;
+    z-index: 20;
+  }
   .map {
     position: absolute;
     inset: 0;
+  }
+  .corner {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    background: var(--bg);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
   }
   .cover {
     position: absolute;
