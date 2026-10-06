@@ -1,14 +1,16 @@
 <script lang="ts">
-  import type { ImportReport } from "../bindings";
-  import { importDetails, importSummary } from "./importText";
+  import type { ImportReport, KindFilter } from "../bindings";
+  import { hiddenByFilter, importDetails, importSummary } from "./importText";
 
   // What the last drop did; stays until closed or replaced by the next drop.
-  export type ImportBannerState = { report: ImportReport } | { error: string } | { notice: string };
+  // `filter`: the kind filter the dashboard had when the import ran.
+  export type ImportBannerState = { report: ImportReport; filter: KindFilter } | { error: string } | { notice: string };
 
   let { state, onclose }: { state: ImportBannerState; onclose: () => void } = $props();
 
   const text = $derived(
-    "report" in state ? importSummary(state.report) : "error" in state ? `Import failed: ${state.error}` : state.notice,
+    "report" in state
+      ? [importSummary(state.report), hiddenByFilter(state.report, state.filter)].filter(Boolean).join(" · ") : "error" in state ? `Import failed: ${state.error}` : state.notice,
   );
   // Rejections and warnings, behind a "Details" disclosure (closed by default).
   const details = $derived("report" in state ? importDetails(state.report) : []);

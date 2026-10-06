@@ -167,10 +167,14 @@ async fn update_kind<R: Runtime>(
 /// import creates it), with the CLI's rules (ADR 0004), and returns what happened.
 #[tauri::command]
 #[specta::specta]
-async fn import<R: Runtime>(app: AppHandle<R>, paths: Vec<String>) -> Result<ImportReport, String> {
+async fn import<R: Runtime>(
+    app: AppHandle<R>,
+    paths: Vec<String>,
+    kind_filter: KindFilter,
+) -> Result<ImportReport, String> {
     blocking(move || {
         let paths: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).collect();
-        import::import_into(&db_path(&app)?, &paths)
+        import::import_into(&db_path(&app)?, &paths, &kind_filter)
     })
     .await
 }
