@@ -1,5 +1,8 @@
 // The hike map's background, kept in one place so that another provider is a one-line change.
 
+/** The fonts of the OpenFreeMap styles, also given to the plain background (text needs them). */
+export const GLYPHS_URL = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
+
 /** OpenFreeMap vector styles (no key), one per macOS appearance. */
 export const BACKGROUND_STYLE_URL = {
   light: "https://tiles.openfreemap.org/styles/liberty",
@@ -68,6 +71,7 @@ export function themeColors() {
     bg: read("--bg"),
     surface: read("--surface"),
     muted: read("--muted"),
+    text: read("--text"),
     stopped: read("--speed-stopped"),
     speed: ["--speed-1", "--speed-2", "--speed-3", "--speed-4"].map(read),
   };

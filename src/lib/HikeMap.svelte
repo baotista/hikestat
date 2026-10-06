@@ -7,8 +7,17 @@
   import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
   import { commands, type MapTrack } from "../bindings";
   import { formatSpeed } from "./format";
-  import { endpoints, gapLines, isEmpty, segmentLines, speedLines, trackBounds } from "./mapData";
-  import { BACKGROUND_STYLE_URL, currentScheme, darkQuery, prepareStyle, themeColors } from "./mapStyle";
+  import {
+    KM_MIN_ZOOM,
+    endpoints,
+    gapLines,
+    isEmpty,
+    kmMarkers,
+    segmentLines,
+    speedLines,
+    trackBounds,
+  } from "./mapData";
+  import { BACKGROUND_STYLE_URL, GLYPHS_URL, currentScheme, darkQuery, prepareStyle, themeColors } from "./mapStyle";
 
   // Map of one hike's track. `version` changes on every reload: the track is fetched again, but
   // the camera only moves when the hike changes. `expanded`: the map fills the window (bound by the
@@ -53,24 +62,28 @@
 
   // --- Track layers ------------------------------------------------------------------------------
 
-  const SOURCES = ["track-lines", "track-speed", "track-gaps", "track-ends"] as const;
+  const SOURCES = ["track-lines", "track-speed", "track-gaps", "track-ends", "track-km"] as const;
 
   // Colours are read from the theme each time: a theme change reloads the style and the data.
   function sourceData(source: (typeof SOURCES)[number], data: MapTrack) {
     if (source === "track-lines") return segmentLines(data);
     if (source === "track-speed") return speedLines(data, themeColors());
     if (source === "track-gaps") return gapLines(data);
+    if (source === "track-km") return kmMarkers(data);
     return endpoints(data);
   }
 
   // Added again after every style change (a style change drops them), with the theme's colours.
   function addTrackLayers() {
     if (map === null) return;
-    const empty: MapTrack = { segments: [], gaps: [], speedScale: null };
+    const empty: MapTrack = { segments: [], gaps: [], speedScale: null, kmMarkers: [] };
     for (const source of SOURCES) {
-      map.addSource(source, { type: "geojson", data: sourceData(source, track ?? empty) });
+      // The speed lines are one tiny line per intervalle: with the default tolerance, tiling drops
+      // the shortest ones and the track looks dashed when zoomed out.
+      const tolerance = source === "track-speed" ? 0 : undefined;
+      map.addSource(source, { type: "geojson", data: sourceData(source, track ?? empty), tolerance });
     }
-    const { accent, bg, stopped } = themeColors();
+    const { accent, bg, stopped, muted, text } = themeColors();
     const round = { "line-cap": "round", "line-join": "round" } as const;
     map.addLayer({
       id: "track-gaps",
@@ -110,6 +123,49 @@
       filter: ["==", ["get", "role"], "end"],
       paint: { "circle-radius": 5, "circle-color": bg, "circle-stroke-color": accent, "circle-stroke-width": 3 },
     });
+    addKmLayers(bg, muted, text);
+  }
+
+  // Km markers: a round badge with the number. One layer per step, the multiples of 10 on top so
+  // that they win when badges collide (overlapping ones are hidden).
+  const KM_BADGE = "km-badge";
+  const BADGE_PX = 22;
+
+  function badgeImage(fill: string, stroke: string): ImageData {
+    const ratio = 2;
+    const size = BADGE_PX * ratio;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = size;
+    const context = canvas.getContext("2d")!;
+    context.beginPath();
+    context.arc(size / 2, size / 2, size / 2 - 2 * ratio, 0, 2 * Math.PI);
+    context.fillStyle = fill;
+    context.fill();
+    context.lineWidth = 1.5 * ratio;
+    context.strokeStyle = stroke;
+    context.stroke();
+    return context.getImageData(0, 0, size, size);
+  }
+
+  function addKmLayers(bg: string, muted: string, text: string) {
+    if (map === null) return;
+    map.addImage(KM_BADGE, badgeImage(bg, muted), { pixelRatio: 2 });
+    for (const minZoom of [KM_MIN_ZOOM.every, KM_MIN_ZOOM.fives, KM_MIN_ZOOM.tens]) {
+      map.addLayer({
+        id: `track-km-${minZoom}`,
+        type: "symbol",
+        source: "track-km",
+        minzoom: minZoom,
+        filter: ["==", ["get", "minZoom"], minZoom],
+        layout: {
+          "icon-image": KM_BADGE,
+          "text-field": ["get", "label"],
+          "text-font": ["Noto Sans Bold"],
+          "text-size": 9,
+        },
+        paint: { "text-color": text },
+      });
+    }
   }
 
   function showTrack(target: number) {
@@ -131,6 +187,7 @@
   function plainStyle(): Style {
     return {
       version: 8,
+      glyphs: GLYPHS_URL,
       sources: {},
       layers: [{ id: "background", type: "background", paint: { "background-color": themeColors().surface } }],
     };

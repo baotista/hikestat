@@ -123,12 +123,20 @@ export type KindFilter = { filter: "all" } |
 /**  Hikes of exactly this kind (case-sensitive, as stored). */
 { filter: "kind"; kind: string };
 
+/**  Where the hike reaches `km` whole kilometres (counted like the stats' distance). */
+export type KmMarker = {
+	km: number,
+	position: [number, number],
+};
+
 export type MapTrack = {
 	/**  The segments in order, each drawn as its own line; none if the hike has no points. */
 	segments: Segment[],
 	gaps: Gap[],
 	/**  `null` if no intervalle is moving: the track is drawn in the accent colour. */
 	speedScale: SpeedScale | null,
+	/**  One per whole kilometre, in order; none at 0. */
+	kmMarkers: KmMarker[],
 };
 
 /**  Summed metrics. A missing (NULL) metric counts as 0. */

@@ -4,7 +4,9 @@ import {
   type TrackColors,
   endpoints,
   gapLines,
+  KM_MIN_ZOOM,
   isEmpty,
+  kmMarkers,
   mixColor,
   segmentLines,
   speedFraction,
@@ -32,9 +34,10 @@ const twoSegments: MapTrack = {
   ],
   gaps: [{ from: [6.1, 45.1], to: [6.3, 45.2] }],
   speedScale: null,
+  kmMarkers: [],
 };
 
-const empty: MapTrack = { segments: [], gaps: [], speedScale: null };
+const empty: MapTrack = { segments: [], gaps: [], speedScale: null, kmMarkers: [] };
 
 const colors: TrackColors = {
   accent: "#0a7c42",
@@ -150,6 +153,7 @@ describe("speedLines", () => {
     ],
     gaps: [],
     speedScale: { lowMps: 1, highMps: 3 },
+    kmMarkers: [],
   };
 
   it("draws each intervalle in the colour of its speed, stopped and untimed in grey", () => {
@@ -165,5 +169,33 @@ describe("speedLines", () => {
     const lines = speedLines(twoSegments, colors).features;
     expect(lines.map((f) => f.properties.color)).toEqual(["#0a7c42", "#0a7c42"]);
     expect(lines[0].geometry.coordinates).toEqual(twoSegments.segments[0].positions);
+  });
+});
+
+describe("kmMarkers", () => {
+  const at = (km: number) => ({ km, position: [6.0, 45.0 + km / 100] as LonLat });
+  const track: MapTrack = { ...empty, kmMarkers: [1, 4, 5, 10, 15, 20].map(at) };
+
+  it("puts each marker where the library placed it, labelled with its number", () => {
+    const features = kmMarkers(track).features;
+    expect(features.map((f) => f.properties.label)).toEqual(["1", "4", "5", "10", "15", "20"]);
+    expect(features[1].geometry.coordinates).toEqual([6.0, 45.04]);
+  });
+
+  it("shows multiples of 10 at every zoom, of 5 closer, and every kilometre closer still", () => {
+    expect(kmMarkers(track).features.map((f) => f.properties.minZoom)).toEqual([
+      KM_MIN_ZOOM.every,
+      KM_MIN_ZOOM.every,
+      KM_MIN_ZOOM.fives,
+      KM_MIN_ZOOM.tens,
+      KM_MIN_ZOOM.fives,
+      KM_MIN_ZOOM.tens,
+    ]);
+    expect(KM_MIN_ZOOM.tens).toBeLessThan(KM_MIN_ZOOM.fives);
+    expect(KM_MIN_ZOOM.fives).toBeLessThan(KM_MIN_ZOOM.every);
+  });
+
+  it("has no marker on a hike under a kilometre", () => {
+    expect(kmMarkers(empty).features).toEqual([]);
   });
 });
