@@ -6,8 +6,9 @@
   // worker (with the chunk it imports) and MapLibre is told where it is.
   import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
   import { commands, type MapTrack } from "../bindings";
-  import { endpoints, gapLines, isEmpty, segmentLines, trackBounds } from "./mapData";
-  import { BACKGROUND_STYLE_URL, currentScheme, darkQuery, themeColors } from "./mapStyle";
+  import { formatSpeed } from "./format";
+  import { endpoints, gapLines, isEmpty, segmentLines, speedLines, trackBounds } from "./mapData";
+  import { BACKGROUND_STYLE_URL, currentScheme, darkQuery, prepareStyle, themeColors } from "./mapStyle";
 
   // Map of one hike's track. `version` changes on every reload: the track is fetched again, but
   // the camera only moves when the hike changes. `expanded`: the map fills the window (bound by the
@@ -52,10 +53,12 @@
 
   // --- Track layers ------------------------------------------------------------------------------
 
-  const SOURCES = ["track-lines", "track-gaps", "track-ends"] as const;
+  const SOURCES = ["track-lines", "track-speed", "track-gaps", "track-ends"] as const;
 
+  // Colours are read from the theme each time: a theme change reloads the style and the data.
   function sourceData(source: (typeof SOURCES)[number], data: MapTrack) {
     if (source === "track-lines") return segmentLines(data);
+    if (source === "track-speed") return speedLines(data, themeColors());
     if (source === "track-gaps") return gapLines(data);
     return endpoints(data);
   }
@@ -63,18 +66,19 @@
   // Added again after every style change (a style change drops them), with the theme's colours.
   function addTrackLayers() {
     if (map === null) return;
-    const empty: MapTrack = { segments: [], gaps: [] };
+    const empty: MapTrack = { segments: [], gaps: [], speedScale: null };
     for (const source of SOURCES) {
       map.addSource(source, { type: "geojson", data: sourceData(source, track ?? empty) });
     }
-    const { accent, bg } = themeColors();
+    const { accent, bg, stopped } = themeColors();
     const round = { "line-cap": "round", "line-join": "round" } as const;
     map.addLayer({
       id: "track-gaps",
       type: "line",
       source: "track-gaps",
       layout: round,
-      paint: { "line-color": accent, "line-width": 2, "line-opacity": 0.7, "line-dasharray": [1, 2] },
+      // Grey like a stretch without speed: nothing is measured across a trou de signal.
+      paint: { "line-color": stopped, "line-width": 2, "line-opacity": 0.8, "line-dasharray": [1, 2] },
     });
     map.addLayer({
       id: "track-casing",
@@ -83,12 +87,13 @@
       layout: round,
       paint: { "line-color": bg, "line-width": 7 },
     });
+    // One feature per intervalle, coloured by speed (or whole segments in the accent colour).
     map.addLayer({
       id: "track-line",
       type: "line",
-      source: "track-lines",
+      source: "track-speed",
       layout: round,
-      paint: { "line-color": accent, "line-width": 4 },
+      paint: { "line-color": ["get", "color"], "line-width": 4 },
     });
     // Start: filled dot. End: ringed dot, drawn after the start so it is on top on a loop.
     map.addLayer({
@@ -115,7 +120,8 @@
     if (framed === target) return;
     const bounds = trackBounds(track);
     if (bounds === null) return;
-    map.fitBounds(bounds, { padding: 24, maxZoom: 16, duration: 0 });
+    // Room at the top for the buttons and the notice, at the bottom for the legend.
+    map.fitBounds(bounds, { padding: { top: 44, bottom: 40, left: 24, right: 24 }, maxZoom: 16, duration: 0 });
     framed = target;
   }
 
@@ -137,12 +143,9 @@
     const request = ++styleRequest;
     let style: Style | null = null;
     try {
-      const response = await fetch(BACKGROUND_STYLE_URL[currentScheme()], { signal: AbortSignal.timeout(10_000) });
-      if (response.ok) {
-        // The style's own camera would undo the framing on the track.
-        const { center: _center, zoom: _zoom, bearing: _bearing, pitch: _pitch, ...rest } = await response.json();
-        style = rest;
-      }
+      const scheme = currentScheme();
+      const response = await fetch(BACKGROUND_STYLE_URL[scheme], { signal: AbortSignal.timeout(10_000) });
+      if (response.ok) style = prepareStyle(await response.json(), scheme);
     } catch {
       style = null;
     }
@@ -225,8 +228,18 @@
     <p class="cover">Loading…</p>
   {:else if isEmpty(track)}
     <p class="cover">No points</p>
-  {:else if backgroundUnavailable}
-    <p class="notice">Map background unavailable</p>
+  {:else}
+    {#if backgroundUnavailable}
+      <p class="notice">Map background unavailable</p>
+    {/if}
+    {#if track.speedScale}
+      <div class="legend" aria-label="Speed colours">
+        <span class="gradient"></span>
+        <span>{formatSpeed(track.speedScale.lowMps)} – {formatSpeed(track.speedScale.highMps)}</span>
+        <span class="swatch"></span>
+        <span>Stopped</span>
+      </div>
+    {/if}
   {/if}
   {#if track !== null && !isEmpty(track) && !failure}
     {#if expanded}
@@ -281,10 +294,10 @@
     background: var(--surface);
     color: var(--muted);
   }
-  /* Bottom left: the attribution is bottom right, and the track is framed away from the edges. */
+  /* Top left (the legend is bottom left): the track is framed away from both. */
   .notice {
     position: absolute;
-    bottom: 8px;
+    top: 8px;
     left: 8px;
     margin: 0;
     padding: 2px 8px;
@@ -293,6 +306,35 @@
     color: var(--muted);
     font-size: 0.78rem;
     pointer-events: none;
+  }
+  /* Bottom left: the attribution is bottom right. */
+  .legend {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+  }
+  .gradient {
+    width: 48px;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right, var(--speed-1), var(--speed-2), var(--speed-3), var(--speed-4));
+  }
+  .swatch {
+    width: 10px;
+    height: 6px;
+    margin-left: 4px;
+    border-radius: 3px;
+    background: var(--speed-stopped);
   }
   .danger-text {
     color: var(--danger);
