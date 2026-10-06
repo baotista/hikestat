@@ -44,6 +44,10 @@ roads, water and names are lightened to stay readable), so it needs the network:
 offline, the track is drawn on a plain background and the next reload (focus, ⌘R) tries again. A reload keeps the map's framing; opening another hike
 frames its track.
 
+Under the map, the elevation profile draws the elevation against the distance (counted like the
+stats; a dashed line marks each gap between segments; glitch elevations left out). Hovering it
+shows the km and the elevation; a hike without elevation says so.
+
 ## Prerequisites
 
 - Rust 1.85 or newer (2024 edition)

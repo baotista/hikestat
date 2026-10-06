@@ -22,15 +22,19 @@
   // Map of one hike's track. `version` changes on every reload: the track is fetched again, but
   // the camera only moves when the hike changes. `expanded`: the map fills the window (bound by the
   // panel, whose Escape closes it first).
-  let { id, version, expanded = $bindable(false) }: { id: number; version: number; expanded?: boolean } = $props();
+  // `track`: the hike's map track once loaded, bound by the panel for the elevation profile.
+  let {
+    id,
+    version,
+    expanded = $bindable(false),
+    track = $bindable(null),
+  }: { id: number; version: number; expanded?: boolean; track?: MapTrack | null } = $props();
 
   setWorkerUrl(workerUrl);
 
   type Style = Exclude<Parameters<MapLibreMap["setStyle"]>[0], string | null>;
 
   let container = $state<HTMLDivElement | null>(null);
-  // Raw: always replaced whole, and handed to MapLibre (which sends it to its worker) unproxied.
-  let track = $state.raw<MapTrack | null>(null);
   let failure = $state<string | null>(null);
   let backgroundUnavailable = $state(false);
 

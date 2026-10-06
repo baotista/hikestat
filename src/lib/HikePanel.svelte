@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { commands, type HikeDetails } from "../bindings";
+  import { commands, type HikeDetails, type MapTrack } from "../bindings";
   import {
     MISSING,
     displayName,
@@ -10,6 +10,7 @@
     formatSpeed,
     orMissing,
   } from "./format";
+  import ElevationProfile from "./ElevationProfile.svelte";
   import HikeMap from "./HikeMap.svelte";
   import { kindChanged, normalizeKind } from "./kind";
 
@@ -61,6 +62,8 @@
 
   // The map fills the window: Escape closes it first, and only a second Escape closes the panel.
   let mapExpanded = $state(false);
+  // The hike's map track, loaded by the map and shared with the elevation profile (raw: replaced whole).
+  let mapTrack = $state.raw<MapTrack | null>(null);
 
   function onKeydown(event: KeyboardEvent) {
     if (event.key === "Escape") {
@@ -315,7 +318,12 @@
       {/each}
     </dl>
 
-    <HikeMap {id} {version} bind:expanded={mapExpanded} />
+    <HikeMap {id} {version} bind:expanded={mapExpanded} bind:track={mapTrack} />
+    {#if mapTrack !== null && mapTrack.segments.length > 0}
+      <div class="profile">
+        <ElevationProfile track={mapTrack} />
+      </div>
+    {/if}
   {/if}
 </div>
 
@@ -444,6 +452,9 @@
     font-size: 1.1rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
+  }
+  .profile {
+    margin-top: 8px;
   }
   .muted {
     color: var(--muted);

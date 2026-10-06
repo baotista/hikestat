@@ -181,6 +181,10 @@ export type Segment = {
 	positions: ([number, number])[],
 	/**  One per pair of consecutive positions. */
 	intervals: Interval[],
+	/**  For the profile: the distance from the start of the hike at each position, in metres. */
+	distancesM: number[],
+	/**  For the profile: the elevation at each position, `null` if missing or a GPS glitch. */
+	elevationsM: (number | null)[],
 };
 
 /**  The speeds at both ends of the colour scale, in m/s. */
