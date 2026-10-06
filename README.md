@@ -83,7 +83,7 @@ an app built on a newer tag would migrate the database, and an older CLI would t
 to it. **Always install the app and the `hikestat` CLI from the same library tag**, for example:
 
 ```sh
-cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.8.0
+cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.9.0
 ```
 
 If the database is newer than the library bundled in the app, the app says so, writes nothing, and
