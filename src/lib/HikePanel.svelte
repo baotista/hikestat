@@ -10,6 +10,7 @@
     formatSpeed,
     orMissing,
   } from "./format";
+  import HikeMap from "./HikeMap.svelte";
   import { kindChanged, normalizeKind } from "./kind";
 
   // Panel of one hike. `version` changes on every reload: the hike is fetched again.
@@ -307,7 +308,7 @@
       {/each}
     </dl>
 
-    <div class="map" aria-label="Map (coming soon)">Map — coming soon</div>
+    <HikeMap {id} {version} />
   {/if}
 </div>
 
@@ -436,16 +437,6 @@
     font-size: 1.1rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-  }
-  .map {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 220px;
-    border: 1px dashed var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--muted);
   }
   .muted {
     color: var(--muted);

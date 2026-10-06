@@ -4,6 +4,8 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 // https://v2.tauri.app/start/frontend/vite/
 export default defineConfig({
   plugins: [svelte()],
+  // MapLibre's worker is an ES module (it imports a shared chunk).
+  worker: { format: "es" },
   // Keep Rust errors visible in `tauri dev`.
   clearScreen: false,
   server: {

@@ -20,6 +20,11 @@ export const commands = {
 	hike: (id: HikeId) => typedError<HikeDetails, string>(__TAURI_INVOKE("hike", { id })),
 	/**  The hikes with these `ids` (a bucket's `hikeIds`), in the same order; unknown ids are left out. */
 	hikes: (ids: HikeId[]) => typedError<HikeDetails[], string>(__TAURI_INVOKE("hikes", { ids })),
+	/**
+	 *  What the map of the hike `id` draws (its segments and the gaps between them), or an error if
+	 *  there is no such hike.
+	 */
+	track: (id: HikeId) => typedError<MapTrack, string>(__TAURI_INVOKE("track", { id })),
 	/**  The distinct kinds of the hikes, as stored, sorted case-insensitively (for the kind filter). */
 	kinds: () => typedError<string[], string>(__TAURI_INVOKE("kinds")),
 	/**
@@ -71,6 +76,12 @@ export type DbStatus = { state: "ready"; path: string; hikeCount: number } |
 /**  Any other failure (not a database, permissions…). */
 { state: "error"; path: string; message: string };
 
+/**  A trou de signal, drawn as a dashed line from the end of a segment to the start of the next. */
+export type Gap = {
+	from: [number, number],
+	to: [number, number],
+};
+
 /**  A hike without its points. Units and nullability follow the database. */
 export type HikeDetails = {
 	id: number,
@@ -104,6 +115,12 @@ export type KindFilter = { filter: "all" } |
 { filter: "notSet" } | 
 /**  Hikes of exactly this kind (case-sensitive, as stored). */
 { filter: "kind"; kind: string };
+
+export type MapTrack = {
+	/**  The segments in order, each drawn as its own line; none if the hike has no points. */
+	segments: (([number, number])[])[],
+	gaps: Gap[],
+};
 
 /**  Summed metrics. A missing (NULL) metric counts as 0. */
 export type Metrics = {
