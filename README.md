@@ -10,7 +10,9 @@ Drop GPX files or folders anywhere on the window to import them, exactly as `hik
 anything else is rejected as "not a .gpx file"). An overlay shows while dragging and while
 importing; a banner then sums up the import (imported, already present, rejected), with a
 "Details" disclosure listing each rejection (file, trace, reason) and warning, and the data reloads.
-A second drop during an import is refused.
+The dashboard then moves to the window (in the current view) of the most recently started hike just
+imported; the kind filter is kept, and the banner says how many imported hikes it hides. A second
+drop during an import is refused.
 
 For now the app shows the dashboard's total and bar chart of a chosen metric (distance, ascent,
 moving time or number of hikes; with ascent, the header also says how many hikes have no elevation
@@ -91,7 +93,7 @@ an app built on a newer tag would migrate the database, and an older CLI would t
 to it. **Always install the app and the `hikestat` CLI from the same library tag**, for example:
 
 ```sh
-cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.10.0
+cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.11.0
 ```
 
 If this fails with `failed to authenticate when downloading repository` (`attempted ssh-agent

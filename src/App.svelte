@@ -63,9 +63,16 @@
       return;
     }
     importing = true;
-    const result = await commands.import(paths);
+    const filter = kindFilter;
+    const result = await commands.import(paths, filter);
     importing = false;
-    banner = result.status === "ok" ? { report: result.data } : { error: result.error };
+    if (result.status === "ok") {
+      banner = { report: result.data, filter };
+      // Show the most recently started imported hike: same view, metric and filter.
+      if (result.data.anchor !== null) anchor = result.data.anchor;
+    } else {
+      banner = { error: result.error };
+    }
     // Reload like after an edit: status, dashboard, kinds and hike list.
     refresh();
   }

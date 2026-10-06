@@ -194,7 +194,7 @@ fn window(hikes: &[Hike], view: View, anchor: Date, today: Date) -> Result<Windo
     })
 }
 
-fn matches(filter: &KindFilter, hike: &Hike) -> bool {
+pub(crate) fn matches(filter: &KindFilter, hike: &Hike) -> bool {
     match filter {
         KindFilter::All => true,
         KindFilter::NotSet => hike.kind.is_none(),
@@ -203,7 +203,7 @@ fn matches(filter: &KindFilter, hike: &Hike) -> bool {
 }
 
 /// The start instant in the start time zone, UTC if the zone is missing or unknown.
-fn local_date(hike: &Hike) -> Option<Date> {
+pub(crate) fn local_date(hike: &Hike) -> Option<Date> {
     let instant = Timestamp::from_second(hike.started_at?).ok()?;
     let zone = hike
         .start_tz

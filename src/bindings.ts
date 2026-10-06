@@ -46,7 +46,7 @@ export const commands = {
 	 *  Imports the GPX files and folders dropped on the window into the database in use (the first
 	 *  import creates it), with the CLI's rules (ADR 0004), and returns what happened.
 	 */
-	import: (paths: string[]) => typedError<ImportReport, string>(__TAURI_INVOKE("import", { paths })),
+	import: (paths: string[], kindFilter: KindFilter) => typedError<ImportReport, string>(__TAURI_INVOKE("import", { paths, kindFilter })),
 };
 
 /* Types */
@@ -121,6 +121,13 @@ export type ImportReport = {
 	rejections: Rejection[],
 	/**  Things ignored on purpose (routes, waypoints, a file or folder without track). */
 	warnings: string[],
+	/**
+	 *  Where the dashboard goes: the local date (start time zone) of the most recently started
+	 *  imported hike; `null` if nothing was imported (or none has a start time).
+	 */
+	anchor: string | null,
+	/**  How many imported hikes the current kind filter hides. */
+	hiddenByFilter: number,
 };
 
 /**  An intervalle, from one position to the next. */

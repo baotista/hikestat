@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { ImportReport } from "../bindings";
-import { importDetails, importSummary } from "./importText";
+import { hiddenByFilter, importDetails, importSummary } from "./importText";
 
 const report = (imported: number, alreadyPresent: number, rejected: number): ImportReport => ({
   imported,
   alreadyPresent,
   rejections: Array.from({ length: rejected }, () => ({ file: "a.gpx", traceNumber: null, reason: "bad" })),
   warnings: [],
+  anchor: null,
+  hiddenByFilter: 0,
 });
 
 describe("importSummary", () => {
@@ -56,5 +58,18 @@ describe("importDetails", () => {
 
   it("is empty without rejections or warnings", () => {
     expect(importDetails(report(3, 1, 0))).toEqual([]);
+  });
+});
+
+describe("hiddenByFilter", () => {
+  const hidden = (n: number) => ({ ...report(n, 0, 0), hiddenByFilter: n });
+
+  it("names the kind filter that hides imported hikes", () => {
+    expect(hiddenByFilter(hidden(1), { filter: "kind", kind: "Cycling" })).toBe("1 hidden by the Cycling filter");
+    expect(hiddenByFilter(hidden(2), { filter: "notSet" })).toBe("2 hidden by the Not set filter");
+  });
+
+  it("is empty when the filter hides nothing", () => {
+    expect(hiddenByFilter(report(3, 0, 0), { filter: "kind", kind: "Cycling" })).toBe("");
   });
 });

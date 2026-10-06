@@ -1,6 +1,6 @@
 // What the import banner says. Pure functions.
 
-import type { ImportReport } from "../bindings";
+import type { ImportReport, KindFilter } from "../bindings";
 
 /** "3 imported · 1 already present · 1 rejected", without the counts of zero. */
 export function importSummary(report: ImportReport): string {
@@ -25,4 +25,11 @@ export function importDetails(report: ImportReport): string[] {
     return `${where}: ${r.reason}`;
   });
   return [...rejections, ...report.warnings];
+}
+
+/** "1 hidden by the Cycling filter" when the dashboard's kind filter hides imported hikes, else "". */
+export function hiddenByFilter(report: ImportReport, filter: KindFilter): string {
+  if (report.hiddenByFilter === 0) return "";
+  const name = filter.filter === "kind" ? filter.kind : filter.filter === "notSet" ? "Not set" : "All";
+  return `${report.hiddenByFilter} hidden by the ${name} filter`;
 }
