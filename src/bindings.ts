@@ -42,6 +42,11 @@ export const commands = {
 	 *  clears it to Not set) and returns the updated hike.
 	 */
 	updateKind: (id: HikeId, value: string) => typedError<HikeDetails, string>(__TAURI_INVOKE("update_kind", { id, value })),
+	/**
+	 *  Imports the GPX files and folders dropped on the window into the database in use, with the CLI's
+	 *  rules (ADR 0004), and returns what happened.
+	 */
+	import: (paths: string[]) => typedError<ImportReport, string>(__TAURI_INVOKE("import", { paths })),
 };
 
 /* Types */
@@ -109,6 +114,15 @@ export type HikeDetails = {
 /**  A hike's id as a command argument (specta refuses a bare `i64`: it may not fit a TypeScript `number`). */
 export type HikeId = number;
 
+/**  What an import did, as the banner shows it. */
+export type ImportReport = {
+	imported: number,
+	alreadyPresent: number,
+	rejections: Rejection[],
+	/**  Things ignored on purpose (routes, waypoints, a file or folder without track). */
+	warnings: string[],
+};
+
 /**  An intervalle, from one position to the next. */
 export type Interval = 
 /**  Coloured by its smoothed speed, in m/s. */
@@ -145,6 +159,15 @@ export type Metrics = {
 	ascentM: number | null,
 	movingS: number,
 	hikeCount: number,
+};
+
+/**  A trace or a whole file that was not imported. */
+export type Rejection = {
+	/**  The path as dropped (or found in a dropped folder). */
+	file: string,
+	/**  1-based position of the trace in the file; `null` when the whole file was rejected. */
+	traceNumber: number | null,
+	reason: string,
 };
 
 export type Segment = {
