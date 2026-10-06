@@ -52,6 +52,14 @@ pub struct SpeedScale {
     pub high_mps: f64,
 }
 
+/// Where the hike reaches `km` whole kilometres (counted like the stats' distance).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Type)]
+pub struct KmMarker {
+    pub km: u32,
+    #[specta(type = TsLonLat)]
+    pub position: LonLat,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MapTrack {
@@ -60,6 +68,8 @@ pub struct MapTrack {
     pub gaps: Vec<Gap>,
     /// `null` if no intervalle is moving: the track is drawn in the accent colour.
     pub speed_scale: Option<SpeedScale>,
+    /// One per whole kilometre, in order; none at 0.
+    pub km_markers: Vec<KmMarker>,
 }
 
 fn lon_lat(p: Position) -> LonLat {
@@ -102,6 +112,14 @@ pub fn track(db: &Db, id: i64) -> Result<MapTrack, String> {
             low_mps: s.low_mps,
             high_mps: s.high_mps,
         }),
+        km_markers: track
+            .km_markers
+            .into_iter()
+            .map(|m| KmMarker {
+                km: m.km,
+                position: lon_lat(m.position),
+            })
+            .collect(),
     })
 }
 
@@ -171,6 +189,16 @@ mod tests {
         assert_eq!(intervals[1..], [Interval::Stopped, Interval::Untimed]);
         let scale = t.speed_scale.unwrap();
         assert_eq!((scale.low_mps, scale.high_mps), (speed_mps, speed_mps));
+    }
+
+    #[test]
+    fn km_markers_are_passed_on_lon_first() {
+        // 0.01 degree of latitude is about 1.1 km.
+        let db = db_with_points(3, &[(0, 45.0, 6.0, None), (0, 45.01, 6.0, None)]);
+        let markers = track(&db, 3).unwrap().km_markers;
+        assert_eq!(markers.len(), 1);
+        assert_eq!((markers[0].km, markers[0].position.0), (1, 6.0));
+        assert!((markers[0].position.1 - 45.009).abs() < 0.001);
     }
 
     #[test]

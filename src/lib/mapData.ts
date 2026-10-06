@@ -104,3 +104,26 @@ export function speedLines(track: MapTrack, colors: TrackColors): FeatureCollect
         );
   return { type: "FeatureCollection", features };
 }
+
+// --- Km markers ----------------------------------------------------------------------------------
+
+/** The zoom from which km markers show: multiples of 10 always, of 5 closer, every km closer still. */
+export const KM_MIN_ZOOM = { tens: 0, fives: 11, every: 13 } as const;
+
+function kmMinZoom(km: number): number {
+  if (km % 10 === 0) return KM_MIN_ZOOM.tens;
+  if (km % 5 === 0) return KM_MIN_ZOOM.fives;
+  return KM_MIN_ZOOM.every;
+}
+
+/** One point per whole kilometre, with its label and the zoom from which it shows. */
+export function kmMarkers(track: MapTrack): FeatureCollection<Point, { label: string; minZoom: number }> {
+  return {
+    type: "FeatureCollection",
+    features: track.kmMarkers.map((m) => ({
+      type: "Feature",
+      properties: { label: String(m.km), minZoom: kmMinZoom(m.km) },
+      geometry: { type: "Point", coordinates: m.position },
+    })),
+  };
+}
