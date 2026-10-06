@@ -86,6 +86,16 @@ to it. **Always install the app and the `hikestat` CLI from the same library tag
 cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.9.0
 ```
 
+If this fails with `failed to authenticate when downloading repository` (`attempted ssh-agent
+authentication`), Cargo's built-in SSH client only tried the SSH agent. Outside this repository,
+`src-tauri/.cargo/config.toml` doesn't apply: make Cargo use your `git` for this command with
+`CARGO_NET_GIT_FETCH_WITH_CLI=true cargo install …`, or for good in `~/.cargo/config.toml`:
+
+```toml
+[net]
+git-fetch-with-cli = true
+```
+
 If the database is newer than the library bundled in the app, the app says so, writes nothing, and
 asks you to update Hikestat.
 
