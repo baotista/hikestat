@@ -114,8 +114,10 @@
     <!-- An edit reloads like focus or ⌘R: same window, filter and selection, fresh data. -->
     <Dashboard {version} bind:anchor bind:view bind:metric bind:kindFilter onchanged={refresh} />
   {:else if status.state === "missing"}
+    <!-- The first drop creates the database at this path; refresh() then shows the dashboard. -->
     <p class="message warning">
-      No database at <code>{status.path}</code> — run <code>hikestat import</code> or
+      No database yet at <code>{status.path}</code>. Drop GPX files or folders anywhere on the window
+      to create it and import them — or run <code>hikestat import</code>, or
       <button class="link" onclick={() => (screen = "settings")}>choose a file</button>.
     </p>
   {:else if status.state === "tooNew"}

@@ -1,7 +1,7 @@
 //! Importing what is dropped on the window, through the library (ADR 0004), and what to tell the
 //! user about it.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use hikestat::import::{self, ImportOptions, ImportSummary};
 use hikestat::storage::Db;
@@ -52,6 +52,14 @@ pub fn import(db: &mut Db, paths: &[PathBuf]) -> ImportReport {
     report(import::import_paths(db, paths, &ImportOptions::default()))
 }
 
+/// Imports the dropped `paths` into the database at `db_path`, creating it (and its folder) if it
+/// doesn't exist yet, as `hikestat import` does (ADR 0004). A database written by a newer library
+/// is refused before anything is written.
+pub fn import_into(db_path: &Path, paths: &[PathBuf]) -> Result<ImportReport, String> {
+    let mut db = Db::open(db_path).map_err(|e| e.to_string())?;
+    Ok(import(&mut db, paths))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -97,6 +105,46 @@ mod tests {
 
         let again = import(&mut db, &[gpx]);
         assert_eq!((again.imported, again.already_present), (0, 1));
+    }
+
+    #[test]
+    fn the_first_import_creates_the_database() {
+        let dir = tempfile::tempdir().unwrap();
+        let gpx = dir.path().join("walk.gpx");
+        std::fs::write(&gpx, GPX).unwrap();
+        let db_path = dir.path().join("not/yet/there/hikestat.db");
+
+        let r = import_into(&db_path, &[gpx]).unwrap();
+        assert_eq!(r.imported, 1);
+        let db = Db::open_existing(&db_path).unwrap();
+        assert_eq!(db.list_hikes().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_database_from_a_newer_library_is_refused_untouched() {
+        let dir = tempfile::tempdir().unwrap();
+        let gpx = dir.path().join("walk.gpx");
+        std::fs::write(&gpx, GPX).unwrap();
+        let db_path = dir.path().join("hikestat.db");
+        let user_version = |db: &Db| -> i64 {
+            db.connection()
+                .pragma_query_value(None, "user_version", |r| r.get(0))
+                .unwrap()
+        };
+        // A database a later library has migrated further than this one knows.
+        let db = Db::open(&db_path).unwrap();
+        let newer = user_version(&db) + 1;
+        db.connection()
+            .pragma_update(None, "user_version", newer)
+            .unwrap();
+        drop(db);
+
+        assert!(import_into(&db_path, &[gpx]).is_err());
+        // Still newer than this library: nothing migrated it back or wrote to it.
+        assert!(matches!(
+            Db::open_existing(&db_path),
+            Err(hikestat::Error::DatabaseTooNew { .. })
+        ));
     }
 
     #[test]

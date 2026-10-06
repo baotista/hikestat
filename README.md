@@ -121,8 +121,9 @@ your shell, move your database to the default path and drop the variable, so tha
 app agree with no configuration (or choose the file in the app's settings). The CLI still honours
 `HIKESTAT_DB` and `--db`, which remain handy for tests and throwaway databases.
 
-The app never creates the database: if there is no file at the path, it tells you to run
-`hikestat import` or to choose a file. The path in use is always shown at the bottom of the window.
+If there is no file at the path, the app says so and the first import creates it there: drop GPX
+files on the window (or run `hikestat import`, or choose another file). Nothing else creates a
+database. The path in use is always shown at the bottom of the window.
 The data is reloaded when the window regains focus and with ⌘R, so hikes imported from the terminal
 show up without restarting the app.
 
