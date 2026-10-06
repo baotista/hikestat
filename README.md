@@ -23,7 +23,8 @@ never moves), a grey dashed line across each gap between segments (where nothing
 start (filled dot) and end (ringed dot) markers. The wheel scrolls the panel; ⌘ + wheel or a
 pinch zooms the map. ⤢ expands it to the whole window (same framing, the wheel zooms); ✕ or Escape
 brings back the panel, and a second Escape closes the panel. The background comes from
-[OpenFreeMap](https://openfreemap.org) (no key), light or dark like macOS, so it needs the network:
+[OpenFreeMap](https://openfreemap.org) (no key), light or dark like macOS (the dark style's paths,
+roads, water and names are lightened to stay readable), so it needs the network:
 offline, the track is drawn on a plain background and the next reload (focus, ⌘R) tries again. A reload keeps the map's framing; opening another hike
 frames its track.
 

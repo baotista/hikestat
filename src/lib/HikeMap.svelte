@@ -8,7 +8,7 @@
   import { commands, type MapTrack } from "../bindings";
   import { formatSpeed } from "./format";
   import { endpoints, gapLines, isEmpty, segmentLines, speedLines, trackBounds } from "./mapData";
-  import { BACKGROUND_STYLE_URL, currentScheme, darkQuery, themeColors } from "./mapStyle";
+  import { BACKGROUND_STYLE_URL, currentScheme, darkQuery, prepareStyle, themeColors } from "./mapStyle";
 
   // Map of one hike's track. `version` changes on every reload: the track is fetched again, but
   // the camera only moves when the hike changes. `expanded`: the map fills the window (bound by the
@@ -143,12 +143,9 @@
     const request = ++styleRequest;
     let style: Style | null = null;
     try {
-      const response = await fetch(BACKGROUND_STYLE_URL[currentScheme()], { signal: AbortSignal.timeout(10_000) });
-      if (response.ok) {
-        // The style's own camera would undo the framing on the track.
-        const { center: _center, zoom: _zoom, bearing: _bearing, pitch: _pitch, ...rest } = await response.json();
-        style = rest;
-      }
+      const scheme = currentScheme();
+      const response = await fetch(BACKGROUND_STYLE_URL[scheme], { signal: AbortSignal.timeout(10_000) });
+      if (response.ok) style = prepareStyle(await response.json(), scheme);
     } catch {
       style = null;
     }
