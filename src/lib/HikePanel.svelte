@@ -59,9 +59,16 @@
     closeButton?.focus();
   });
 
+  // The map fills the window: Escape closes it first, and only a second Escape closes the panel.
+  let mapExpanded = $state(false);
+
   function onKeydown(event: KeyboardEvent) {
     if (event.key === "Escape") {
       event.preventDefault();
+      if (mapExpanded) {
+        mapExpanded = false;
+        return;
+      }
       // Closing removes the fields without a reliable blur: save a pending kind first, then blur a
       // title or note field so it is saved too.
       void saveKind();
@@ -308,7 +315,7 @@
       {/each}
     </dl>
 
-    <HikeMap {id} {version} />
+    <HikeMap {id} {version} bind:expanded={mapExpanded} />
   {/if}
 </div>
 
