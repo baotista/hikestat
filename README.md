@@ -8,8 +8,9 @@ through the same `hikestat` library, and imports GPX through that library too
 Drop GPX files or folders anywhere on the window to import them, exactly as `hikestat import` would
 (same deduplication, rejections and warnings; a folder imports the `.gpx` files directly inside it;
 anything else is rejected as "not a .gpx file"). An overlay shows while dragging and while
-importing; a banner then sums up the import (imported, already present, rejected) and the data
-reloads. A second drop during an import is refused.
+importing; a banner then sums up the import (imported, already present, rejected), with a
+"Details" disclosure listing each rejection (file, trace, reason) and warning, and the data reloads.
+A second drop during an import is refused.
 
 For now the app shows the dashboard's total and bar chart of a chosen metric (distance, ascent,
 moving time or number of hikes; with ascent, the header also says how many hikes have no elevation

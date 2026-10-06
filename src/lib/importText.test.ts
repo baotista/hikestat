@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ImportReport } from "../bindings";
-import { importSummary } from "./importText";
+import { importDetails, importSummary } from "./importText";
 
 const report = (imported: number, alreadyPresent: number, rejected: number): ImportReport => ({
   imported,
@@ -22,5 +22,39 @@ describe("importSummary", () => {
 
   it("says when there was nothing to import", () => {
     expect(importSummary(report(0, 0, 0))).toBe("Nothing to import");
+  });
+});
+
+describe("importDetails", () => {
+  it("names the file and the trace of a rejected trace", () => {
+    const details = importDetails({
+      ...report(0, 0, 0),
+      rejections: [{ file: "/Users/me/hikes/walk.gpx", traceNumber: 2, reason: "no point has a timestamp" }],
+    });
+    expect(details).toEqual(["walk.gpx, trace 2: no point has a timestamp"]);
+  });
+
+  it("names only the file when the whole file was rejected", () => {
+    const details = importDetails({
+      ...report(0, 0, 0),
+      rejections: [
+        { file: "/Users/me/hikes/broken.gpx", traceNumber: null, reason: "unexpected end of file" },
+        { file: "/Users/me/photo.jpg", traceNumber: null, reason: "not a .gpx file" },
+      ],
+    });
+    expect(details).toEqual(["broken.gpx: unexpected end of file", "photo.jpg: not a .gpx file"]);
+  });
+
+  it("lists the warnings after the rejections, as they are", () => {
+    const details = importDetails({
+      ...report(1, 0, 0),
+      rejections: [{ file: "a.gpx", traceNumber: null, reason: "bad" }],
+      warnings: ["/Users/me/hikes/walk.gpx: ignored 2 waypoint(s)"],
+    });
+    expect(details).toEqual(["a.gpx: bad", "/Users/me/hikes/walk.gpx: ignored 2 waypoint(s)"]);
+  });
+
+  it("is empty without rejections or warnings", () => {
+    expect(importDetails(report(3, 1, 0))).toEqual([]);
   });
 });
