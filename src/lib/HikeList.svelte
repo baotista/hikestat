@@ -6,13 +6,16 @@
     formatDistance,
     formatDuration,
     formatElevation,
+    formatHikeCount,
     formatLocalDate,
+    formatSpeed,
     orMissing,
   } from "./format";
+  import { listHikes } from "./hikeList";
 
-  // The hikes of one bucket (a bar of the chart), fetched from its `hikeIds`.
-  // `version` changes on every reload (focus, ⌘R): the hikes are fetched again.
-  // `onchanged` is called after the panel saved an edit.
+  // The list of hikes under the chart: the window's hikes, or the selected bar's, fetched from their
+  // `hikeIds`. `version` changes on every reload (focus, ⌘R, import, edit): the hikes are fetched
+  // again. `onchanged` is called after the panel saved an edit.
   let {
     title,
     ids,
@@ -25,7 +28,7 @@
   // Hike shown in the panel.
   let opened = $state<number | null>(null);
 
-  // Only the latest request may update the list (a new bar or a reload can overlap).
+  // Only the latest request may update the list (a new window, bar or reload can overlap).
   let latest = 0;
 
   $effect(() => {
@@ -47,6 +50,8 @@
     });
   });
 
+  const listing = $derived(hikes === null ? null : listHikes(hikes));
+
   // An edit saved in the panel (title, note) replaces the listed hike, without refetching.
   function onupdated(updated: HikeDetails) {
     if (hikes) hikes = hikes.map((h) => (h.id === updated.id ? updated : h));
@@ -54,30 +59,45 @@
 </script>
 
 <section class="list" aria-label={`Hikes of ${title}`}>
-  <h2>{title}</h2>
+  <div class="heading">
+    <h2>{title}</h2>
+    {#if listing && listing.total > 0}
+      <span class="count">{formatHikeCount(listing.total)}</span>
+    {/if}
+  </div>
 
   {#if failure}
     <p class="message danger">{failure}</p>
-  {:else if hikes === null}
+  {:else if listing === null}
     <p class="muted">Loading…</p>
-  {:else if hikes.length === 0}
+  {:else if listing.total === 0}
     <p class="empty">No hikes.</p>
   {:else}
-    <ul>
-      {#each hikes as hike (hike.id)}
-        <li>
-          <button class="row" aria-pressed={opened === hike.id} onclick={() => (opened = hike.id)}>
-            <span class="name">{displayName(hike)}</span>
-            <span class="date">{formatLocalDate(hike.startedAt, hike.startTz)}</span>
-            <span class="stats">
-              <span title="Distance">{orMissing(hike.distanceM, formatDistance)}</span>
-              <span title="Ascent">↑ {formatElevation(hike.ascentM)}</span>
-              <span title="Moving time">{formatDuration(hike.durationMovingS)}</span>
-            </span>
-          </button>
-        </li>
-      {/each}
-    </ul>
+    <div class="table">
+      <!-- Header and rows share the same grid columns. -->
+      <div class="columns" aria-hidden="true">
+        <span>Name</span>
+        <span>Date</span>
+        <span class="number">Distance</span>
+        <span class="number">Ascent</span>
+        <span class="number">Moving time</span>
+        <span class="number">Avg speed</span>
+      </div>
+      <ul>
+        {#each listing.hikes as hike (hike.id)}
+          <li>
+            <button class="row" aria-pressed={opened === hike.id} onclick={() => (opened = hike.id)}>
+              <span class="name">{displayName(hike)}</span>
+              <span class="date">{formatLocalDate(hike.startedAt, hike.startTz)}</span>
+              <span class="number" title="Distance">{orMissing(hike.distanceM, formatDistance)}</span>
+              <span class="number" title="Ascent">{formatElevation(hike.ascentM)}</span>
+              <span class="number" title="Moving time">{formatDuration(hike.durationMovingS)}</span>
+              <span class="number" title="Average speed">{formatSpeed(hike.avgSpeedMps)}</span>
+            </button>
+          </li>
+        {/each}
+      </ul>
+    </div>
   {/if}
 </section>
 
@@ -89,55 +109,74 @@
   .list {
     margin-top: 24px;
   }
+  .heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 8px;
+  }
   h2 {
     font-size: 1rem;
-    margin: 0 0 8px;
+    margin: 0;
+  }
+  .count {
+    color: var(--muted);
+    font-size: 0.9em;
+  }
+  .table {
+    border-radius: 8px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+  /* Name takes the rest; the other columns fit their widest value. */
+  .columns,
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 7.5rem 5.5rem 4.5rem 5.5rem 6rem;
+    column-gap: 12px;
+    padding: 8px 12px;
+  }
+  .columns {
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
   }
   ul {
     list-style: none;
     margin: 0;
     padding: 0;
-    border-radius: 8px;
-    background: var(--surface);
-    overflow: hidden;
   }
   li + li {
     border-top: 1px solid var(--border);
   }
   .row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas: "name stats" "date stats";
-    column-gap: 16px;
     width: 100%;
     text-align: left;
     border: none;
     border-radius: 0;
     background: transparent;
-    padding: 8px 12px;
+    font-variant-numeric: tabular-nums;
   }
   .row:hover,
   .row[aria-pressed="true"] {
     background: var(--grid);
   }
   .name {
-    grid-area: name;
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .date {
-    grid-area: date;
     color: var(--muted);
-    font-size: 0.9em;
   }
-  .stats {
-    grid-area: stats;
-    align-self: center;
-    display: flex;
-    gap: 14px;
-    font-variant-numeric: tabular-nums;
+  .number {
+    text-align: right;
+    white-space: nowrap;
   }
   .empty,
   .muted {
