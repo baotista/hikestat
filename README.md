@@ -17,8 +17,10 @@ database; blank sets it back to Not set). It is saved on blur or Enter, and the 
 kind filter reload right away.
 
 Below the stats, the panel shows the hike's track on a map ([MapLibre GL](https://maplibre.org)):
-one line per segment, a dashed line across each gap between segments (where nothing was recorded),
-and start (filled dot) and end (ringed dot) markers. The wheel scrolls the panel; ⌘ + wheel or a
+one line per segment, coloured by smoothed speed (from the hike's slow to its fast parts, 5th to 95th
+centile, with a legend in km/h; grey where stopped or without time; in the accent colour if the hike
+never moves), a grey dashed line across each gap between segments (where nothing was recorded), and
+start (filled dot) and end (ringed dot) markers. The wheel scrolls the panel; ⌘ + wheel or a
 pinch zooms the map. ⤢ expands it to the whole window (same framing, the wheel zooms); ✕ or Escape
 brings back the panel, and a second Escape closes the panel. The background comes from
 [OpenFreeMap](https://openfreemap.org) (no key), light or dark like macOS, so it needs the network:

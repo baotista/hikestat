@@ -10,6 +10,13 @@
   /* Bars: one accent, checked for contrast against the background in each mode. */
   --chart-bar: #0a7c42;
   --grid: #e5e5ea;
+  /* Map track by speed, slow to fast: one warm hue darkening (no green, which is the vegetation and
+     the accent), plus grey for stopped and untimed stretches. */
+  --speed-1: #f2b705;
+  --speed-2: #e8590c;
+  --speed-3: #c92a2a;
+  --speed-4: #7b1e5a;
+  --speed-stopped: #8e8e93;
   --warning: #b25000;
   --danger: #c4161c;
 
@@ -30,6 +37,11 @@
     --accent: #30d158;
     --chart-bar: #26b04a;
     --grid: #38383a;
+    --speed-1: #ffd43b;
+    --speed-2: #ff922b;
+    --speed-3: #ff6b6b;
+    --speed-4: #f06595;
+    --speed-stopped: #98989d;
     --warning: #ff9f0a;
     --danger: #ff453a;
   }

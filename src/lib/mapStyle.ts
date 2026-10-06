@@ -16,5 +16,12 @@ export const currentScheme = (): Scheme => (darkQuery().matches ? "dark" : "ligh
 export function themeColors() {
   const css = getComputedStyle(document.documentElement);
   const read = (name: string) => css.getPropertyValue(name).trim();
-  return { accent: read("--accent"), bg: read("--bg"), surface: read("--surface"), muted: read("--muted") };
+  return {
+    accent: read("--accent"),
+    bg: read("--bg"),
+    surface: read("--surface"),
+    muted: read("--muted"),
+    stopped: read("--speed-stopped"),
+    speed: ["--speed-1", "--speed-2", "--speed-3", "--speed-4"].map(read),
+  };
 }

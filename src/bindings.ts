@@ -109,6 +109,13 @@ export type HikeDetails = {
 /**  A hike's id as a command argument (specta refuses a bare `i64`: it may not fit a TypeScript `number`). */
 export type HikeId = number;
 
+/**  An intervalle, from one position to the next. */
+export type Interval = 
+/**  Coloured by its smoothed speed, in m/s. */
+{ kind: "moving"; speedMps: number } | { kind: "stopped" } | 
+/**  A point without time, or a non-positive time step. */
+{ kind: "untimed" };
+
 /**  Which hikes are counted, by kind. */
 export type KindFilter = { filter: "all" } | 
 /**  Hikes without a kind. */
@@ -118,8 +125,10 @@ export type KindFilter = { filter: "all" } |
 
 export type MapTrack = {
 	/**  The segments in order, each drawn as its own line; none if the hike has no points. */
-	segments: (([number, number])[])[],
+	segments: Segment[],
 	gaps: Gap[],
+	/**  `null` if no intervalle is moving: the track is drawn in the accent colour. */
+	speedScale: SpeedScale | null,
 };
 
 /**  Summed metrics. A missing (NULL) metric counts as 0. */
@@ -128,6 +137,18 @@ export type Metrics = {
 	ascentM: number | null,
 	movingS: number,
 	hikeCount: number,
+};
+
+export type Segment = {
+	positions: ([number, number])[],
+	/**  One per pair of consecutive positions. */
+	intervals: Interval[],
+};
+
+/**  The speeds at both ends of the colour scale, in m/s. */
+export type SpeedScale = {
+	lowMps: number,
+	highMps: number,
 };
 
 /**  How the dashboard cuts time. Every view but All shows the window containing the anchor date. */
