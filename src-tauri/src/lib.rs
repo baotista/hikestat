@@ -2,6 +2,7 @@ mod aggregate;
 mod hike;
 mod location;
 mod status;
+mod track;
 
 use std::path::PathBuf;
 
@@ -14,6 +15,7 @@ use aggregate::{Dashboard, KindFilter, View};
 use hike::{HikeDetails, HikeId};
 use location::Settings;
 use status::DbStatus;
+use track::MapTrack;
 
 fn settings_file<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
     let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
@@ -84,6 +86,18 @@ async fn hikes<R: Runtime>(
         let db = Db::open_existing(&db_path(&app)?).map_err(|e| e.to_string())?;
         let ids: Vec<i64> = ids.into_iter().map(|id| id.0).collect();
         hike::hikes(&db, &ids)
+    })
+    .await
+}
+
+/// What the map of the hike `id` draws (its segments and the gaps between them), or an error if
+/// there is no such hike.
+#[tauri::command]
+#[specta::specta]
+async fn track<R: Runtime>(app: AppHandle<R>, id: HikeId) -> Result<MapTrack, String> {
+    blocking(move || {
+        let db = Db::open_existing(&db_path(&app)?).map_err(|e| e.to_string())?;
+        track::track(&db, id.0)
     })
     .await
 }
@@ -170,6 +184,7 @@ fn specta_builder() -> Builder<tauri::Wry> {
         dashboard::<tauri::Wry>,
         hike::<tauri::Wry>,
         hikes::<tauri::Wry>,
+        track::<tauri::Wry>,
         kinds::<tauri::Wry>,
         update_title::<tauri::Wry>,
         update_note::<tauri::Wry>,

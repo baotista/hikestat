@@ -16,6 +16,14 @@ In a hike's panel, the kind can be edited (free text, suggesting the kinds alrea
 database; blank sets it back to Not set). It is saved on blur or Enter, and the dashboard and the
 kind filter reload right away.
 
+Below the stats, the panel shows the hike's track on a map ([MapLibre GL](https://maplibre.org)):
+one line per segment, a dashed line across each gap between segments (where nothing was recorded),
+and start (filled dot) and end (ringed dot) markers. The wheel scrolls the panel; ⌘ + wheel or a
+pinch zooms the map. The background comes from [OpenFreeMap](https://openfreemap.org) (no key),
+light or dark like macOS, so it needs the network: offline, the track is drawn on a plain background
+and the next reload (focus, ⌘R) tries again. A reload keeps the map's framing; opening another hike
+frames its track.
+
 ## Prerequisites
 
 - Rust 1.85 or newer (2024 edition)
@@ -70,7 +78,7 @@ an app built on a newer tag would migrate the database, and an older CLI would t
 to it. **Always install the app and the `hikestat` CLI from the same library tag**, for example:
 
 ```sh
-cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.6.0
+cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.7.0
 ```
 
 If the database is newer than the library bundled in the app, the app says so, writes nothing, and
