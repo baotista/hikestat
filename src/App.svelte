@@ -54,9 +54,9 @@
     }
   }
 
-  // --- Import by drag and drop (ADR 0004) --------------------------------------------------------
-  // Files and folders dropped anywhere on the window, on every screen, are imported through the
-  // library with the CLI's rules. Tauri's drag and drop events carry the paths.
+  // --- Import by drag and drop ---------------------------------------------------------------------
+  // Files and folders dropped anywhere on the window, on every screen, are imported. Tauri's drag
+  // and drop events carry the paths.
 
   let dragging = $state(false);
   let importing = $state(false);
@@ -129,12 +129,12 @@
     <!-- The first drop creates the database at this path; refresh() then shows the dashboard. -->
     <p class="message warning">
       No database yet at <code>{status.path}</code>. Drop GPX files or folders anywhere on the window
-      to create it and import them — or run <code>hikestat import</code>, or
+      to create it and import them, or
       <button class="link" onclick={() => (screen = "settings")}>choose a file</button>.
     </p>
   {:else if status.state === "tooNew"}
     <p class="message warning">
-      This database was written by a newer version of <code>hikestat</code>. Update Hikestat to open it.
+      This database was written by a newer version of Hikestat. Update Hikestat to open it.
     </p>
   {:else}
     <p class="message danger">Cannot open the database: {status.message}</p>

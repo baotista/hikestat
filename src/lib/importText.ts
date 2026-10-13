@@ -17,7 +17,7 @@ const baseName = (path: string) => path.split(/[\\/]/).pop() || path;
 
 /**
  * The "Details" lines: each rejection ("walk.gpx, trace 2: reason", or "walk.gpx: reason" for a
- * whole file), then each warning as the library wrote it.
+ * whole file), then each warning as the import wrote it.
  */
 export function importDetails(report: ImportReport): string[] {
   const rejections = report.rejections.map((r) => {

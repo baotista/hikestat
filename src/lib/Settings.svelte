@@ -22,8 +22,7 @@
     <button onclick={() => onchoose(null)}>Use default location</button>
   </div>
   <p class="hint">
-    The default location is the one the <code>hikestat</code> CLI uses. The <code>HIKESTAT_DB</code>
-    variable is ignored by the app.
+    The default location is <code>~/Library/Application Support/hikestat/hikestat.db</code>.
   </p>
 </section>
 

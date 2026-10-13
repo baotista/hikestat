@@ -1,10 +1,10 @@
-//! Importing what is dropped on the window, through the library (ADR 0004), and what to tell the
+//! Importing what is dropped on the window, and what to tell the
 //! user about it.
 
 use std::path::{Path, PathBuf};
 
-use hikestat::import::{self, ImportOptions, ImportSummary};
-use hikestat::storage::{Db, Hike};
+use crate::domain::import::{self, ImportOptions, ImportSummary};
+use crate::domain::storage::{Db, Hike};
 use jiff::civil::Date;
 use serde::Serialize;
 use specta::Type;
@@ -62,7 +62,7 @@ fn report(summary: ImportSummary, imported: &[Hike], filter: &KindFilter) -> Imp
     }
 }
 
-/// Imports the dropped `paths` into `db`, with the CLI's rules; `filter` is the dashboard's.
+/// Imports the dropped `paths` into `db`; `filter` is the dashboard's.
 pub fn import(db: &mut Db, paths: &[PathBuf], filter: &KindFilter) -> Result<ImportReport, String> {
     let summary = import::import_paths(db, paths, &ImportOptions::default());
     let mut imported = Vec::with_capacity(summary.imported_ids.len());
@@ -73,8 +73,8 @@ pub fn import(db: &mut Db, paths: &[PathBuf], filter: &KindFilter) -> Result<Imp
 }
 
 /// Imports the dropped `paths` into the database at `db_path`, creating it (and its folder) if it
-/// doesn't exist yet, as `hikestat import` does (ADR 0004). A database written by a newer library
-/// is refused before anything is written.
+/// doesn't exist yet. A database written by a newer version of the app is refused before anything
+/// is written.
 pub fn import_into(
     db_path: &Path,
     paths: &[PathBuf],
@@ -145,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    fn a_database_from_a_newer_library_is_refused_untouched() {
+    fn a_database_from_a_newer_version_is_refused_untouched() {
         let dir = tempfile::tempdir().unwrap();
         let gpx = dir.path().join("walk.gpx");
         std::fs::write(&gpx, GPX).unwrap();
@@ -155,7 +155,7 @@ mod tests {
                 .pragma_query_value(None, "user_version", |r| r.get(0))
                 .unwrap()
         };
-        // A database a later library has migrated further than this one knows.
+        // A database a later version has migrated further than this one knows.
         let db = Db::open(&db_path).unwrap();
         let newer = user_version(&db) + 1;
         db.connection()
@@ -164,10 +164,10 @@ mod tests {
         drop(db);
 
         assert!(import_into(&db_path, &[gpx], &KindFilter::All).is_err());
-        // Still newer than this library: nothing migrated it back or wrote to it.
+        // Still newer than this version: nothing migrated it back or wrote to it.
         assert!(matches!(
             Db::open_existing(&db_path),
-            Err(hikestat::Error::DatabaseTooNew { .. })
+            Err(crate::domain::Error::DatabaseTooNew { .. })
         ));
     }
 

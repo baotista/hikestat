@@ -9,9 +9,9 @@
 
 use std::path::PathBuf;
 
-use hikestat::parser::{Point, Trace};
-use hikestat::storage::Db;
-use hikestat::{identity, stats};
+use hikestat_app_lib::domain::parser::{Point, Trace};
+use hikestat_app_lib::domain::storage::Db;
+use hikestat_app_lib::domain::{identity, stats};
 use jiff::{ToSpan, Zoned, civil::Time};
 
 /// A zone and the coordinates of a start point.

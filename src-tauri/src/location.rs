@@ -1,7 +1,4 @@
-//! Where the database is: the file chosen in the app's settings, otherwise the library's default.
-//!
-//! `HIKESTAT_DB` is deliberately ignored: GUI apps don't inherit shell variables, so honouring it
-//! would make the app and the terminal disagree depending on how the app was launched.
+//! Where the database is: the file chosen in the app's settings, otherwise the default.
 
 use std::path::{Path, PathBuf};
 
@@ -10,14 +7,14 @@ use serde::{Deserialize, Serialize};
 /// The app's persisted settings (`settings.json` in the app's config directory).
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Settings {
-    /// The database file chosen by the user; `None` means the library's default path.
+    /// The database file chosen by the user; `None` means the default path.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub db_path: Option<PathBuf>,
 }
 
-/// The library's default database path, the same one the CLI uses without `--db` or `HIKESTAT_DB`.
+/// The default database path, in the user data directory.
 pub fn default_db_path() -> PathBuf {
-    hikestat::config::resolve_db_path(None, None)
+    crate::domain::config::default_db_path()
 }
 
 /// The chosen file if there is one, otherwise `default`.

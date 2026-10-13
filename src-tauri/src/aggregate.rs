@@ -4,7 +4,7 @@
 //! when the zone is missing or unknown). A hike crossing midnight belongs to its start day. Weeks
 //! are ISO weeks, Monday first.
 
-use hikestat::storage::Hike;
+use crate::domain::storage::Hike;
 use jiff::civil::Date;
 use jiff::tz::{self, TimeZone};
 use jiff::{Timestamp, ToSpan};
