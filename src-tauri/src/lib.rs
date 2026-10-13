@@ -1,4 +1,5 @@
 mod aggregate;
+pub mod domain;
 mod hike;
 mod import;
 mod location;
@@ -7,7 +8,7 @@ mod track;
 
 use std::path::PathBuf;
 
-use hikestat::storage::Db;
+use crate::domain::storage::Db;
 use jiff::civil::Date;
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_specta::{Builder, collect_commands};
@@ -30,7 +31,7 @@ fn db_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
 }
 
 /// Runs `work` on a blocking thread: opening the database can wait up to the busy timeout while
-/// the CLI is importing, and that must not freeze the UI.
+/// another connection writes, and that must not freeze the UI.
 async fn blocking<T: Send + 'static>(
     work: impl FnOnce() -> Result<T, String> + Send + 'static,
 ) -> Result<T, String> {
@@ -164,7 +165,7 @@ async fn update_kind<R: Runtime>(
 }
 
 /// Imports the GPX files and folders dropped on the window into the database in use (the first
-/// import creates it), with the CLI's rules (ADR 0004), and returns what happened.
+/// import creates it), and returns what happened.
 #[tauri::command]
 #[specta::specta]
 async fn import<R: Runtime>(

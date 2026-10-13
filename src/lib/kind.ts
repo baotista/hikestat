@@ -1,4 +1,4 @@
-// The kind field of the hike panel. The library trims and stores a blank kind as NULL; the panel
+// The kind field of the hike panel. The backend trims and stores a blank kind as NULL; the panel
 // applies the same rule to know whether there is anything to save.
 
 /** The kind a typed value stands for: trimmed, `null` (Not set) if blank. */

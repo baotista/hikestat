@@ -1,6 +1,6 @@
-//! A hike as the list and the panel show it: the library's row, typed for TypeScript.
+//! A hike as the list and the panel show it: the stored row, typed for TypeScript.
 
-use hikestat::storage::{Db, Hike};
+use crate::domain::storage::{Db, Hike};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 

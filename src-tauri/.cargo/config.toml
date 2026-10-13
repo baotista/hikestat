@@ -1,5 +1,0 @@
-# Fetch git dependencies with the git CLI, so the hikestat library is cloned over SSH with
-# your usual SSH setup (agent, keychain, ~/.ssh/config). Cargo's built-in client only tries
-# the SSH agent.
-[net]
-git-fetch-with-cli = true

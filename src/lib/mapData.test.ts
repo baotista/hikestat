@@ -181,7 +181,7 @@ describe("kmMarkers", () => {
   const at = (km: number) => ({ km, position: [6.0, 45.0 + km / 100] as LonLat });
   const track: MapTrack = { ...empty, kmMarkers: [1, 4, 5, 10, 15, 20].map(at) };
 
-  it("puts each marker where the library placed it, labelled with its number", () => {
+  it("puts each marker where the backend placed it, labelled with its number", () => {
     const features = kmMarkers(track).features;
     expect(features.map((f) => f.properties.label)).toEqual(["1", "4", "5", "10", "15", "20"]);
     expect(features[1].geometry.coordinates).toEqual([6.0, 45.04]);

@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use hikestat::storage::Db;
+use crate::domain::storage::Db;
 use serde::Serialize;
 use specta::Type;
 
@@ -30,8 +30,8 @@ pub fn status_of(path: &Path) -> DbStatus {
             path: shown,
             hike_count: hikes.len() as u32,
         },
-        Err(hikestat::Error::DatabaseNotFound { .. }) => DbStatus::Missing { path: shown },
-        Err(hikestat::Error::DatabaseTooNew { .. }) => DbStatus::TooNew { path: shown },
+        Err(crate::domain::Error::DatabaseNotFound { .. }) => DbStatus::Missing { path: shown },
+        Err(crate::domain::Error::DatabaseTooNew { .. }) => DbStatus::TooNew { path: shown },
         Err(err) => DbStatus::Error {
             path: shown,
             message: err.to_string(),
@@ -101,7 +101,7 @@ mod tests {
         let path = dir.path().join("future.db");
         {
             let db = Db::open(&path).unwrap();
-            // Same trick as the library's own test: a schema version it doesn't know yet.
+            // Same trick as the storage tests: a schema version it doesn't know yet.
             db.connection()
                 .execute_batch("PRAGMA journal_mode = DELETE; PRAGMA user_version = 99;")
                 .unwrap();

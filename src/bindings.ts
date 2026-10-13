@@ -44,7 +44,7 @@ export const commands = {
 	updateKind: (id: HikeId, value: string) => typedError<HikeDetails, string>(__TAURI_INVOKE("update_kind", { id, value })),
 	/**
 	 *  Imports the GPX files and folders dropped on the window into the database in use (the first
-	 *  import creates it), with the CLI's rules (ADR 0004), and returns what happened.
+	 *  import creates it), and returns what happened.
 	 */
 	import: (paths: string[], kindFilter: KindFilter) => typedError<ImportReport, string>(__TAURI_INVOKE("import", { paths, kindFilter })),
 };

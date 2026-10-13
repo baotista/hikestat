@@ -1,7 +1,7 @@
-//! What the hike panel's map draws: the library's map track, typed for TypeScript.
+//! What the hike panel's map draws: the map track, typed for TypeScript.
 
-use hikestat::map::{self, Position};
-use hikestat::storage::Db;
+use crate::domain::map::{self, Position};
+use crate::domain::storage::Db;
 use serde::Serialize;
 use specta::Type;
 
