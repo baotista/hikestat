@@ -17,8 +17,8 @@
   } from "./format";
 
   // `version` changes on every reload (focus, ⌘R): the dashboard is fetched again.
-  // `anchor`, `view`, `metric` and `kindFilter` are owned by the parent so they survive a visit to
-  // Settings.
+  // `anchor`, `view`, `metric`, `kindFilter` and `search` are owned by the parent so they survive a
+  // visit to Settings.
   // `anchor` is a date (`null` = today, in the machine's time zone, resolved in Rust): every view
   // but All shows the window containing it, so switching views keeps it in sight.
   let {
@@ -27,6 +27,7 @@
     view = $bindable("week"),
     metric = $bindable("distance"),
     kindFilter = $bindable({ filter: "all" }),
+    search = $bindable(""),
     onchanged,
   }: {
     version: number;
@@ -34,6 +35,8 @@
     view?: View;
     metric?: Metric;
     kindFilter?: KindFilter;
+    // The list of hikes' search text: narrows the list, never the chart.
+    search?: string;
     // Called after a hike edit is saved: the parent reloads (bumps `version`).
     onchanged?: () => void;
   } = $props();
@@ -166,6 +169,7 @@
           : formatWindow(dashboard.view, dashboard.first, dashboard.last)}
         ids={selected ? selected.hikeIds : dashboard.buckets.flatMap((b) => b.hikeIds)}
         {version}
+        bind:search
         {onchanged}
       />
     {/key}

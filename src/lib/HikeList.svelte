@@ -15,13 +15,15 @@
 
   // The list of hikes under the chart: the window's hikes, or the selected bar's, fetched from their
   // `hikeIds`. `version` changes on every reload (focus, ⌘R, import, edit): the hikes are fetched
-  // again. `onchanged` is called after the panel saved an edit.
+  // again. `onchanged` is called after the panel saved an edit. `search` narrows the list only (never
+  // the chart); it is owned by the parent so it survives a new window, bar or a visit to Settings.
   let {
     title,
     ids,
     version,
+    search = $bindable(""),
     onchanged,
-  }: { title: string; ids: number[]; version: number; onchanged?: () => void } = $props();
+  }: { title: string; ids: number[]; version: number; search?: string; onchanged?: () => void } = $props();
 
   let hikes = $state<HikeDetails[] | null>(null);
   let failure = $state<string | null>(null);
@@ -50,7 +52,7 @@
     });
   });
 
-  const listing = $derived(hikes === null ? null : listHikes(hikes));
+  const listing = $derived(hikes === null ? null : listHikes(hikes, search));
 
   // An edit saved in the panel (title, note) replaces the listed hike, without refetching.
   function onupdated(updated: HikeDetails) {
@@ -62,9 +64,20 @@
   <div class="heading">
     <h2>{title}</h2>
     {#if listing && listing.total > 0}
-      <span class="count">{formatHikeCount(listing.total)}</span>
+      <span class="count">
+        {listing.shown < listing.total ? `${listing.shown} of ${formatHikeCount(listing.total)}` : formatHikeCount(listing.total)}
+      </span>
     {/if}
   </div>
+
+  <!-- Search: filters as you type, over the name, GPX name, note and kind. -->
+  <div class="search">
+    <input type="search" placeholder="Search name, note or kind" aria-label="Search hikes" bind:value={search} />
+    {#if search !== ""}
+      <button class="clear" aria-label="Clear search" onclick={() => (search = "")}>✕</button>
+    {/if}
+  </div>
+  <!-- End of search. -->
 
   {#if failure}
     <p class="message danger">{failure}</p>
@@ -72,6 +85,8 @@
     <p class="muted">Loading…</p>
   {:else if listing.total === 0}
     <p class="empty">No hikes.</p>
+  {:else if listing.shown === 0}
+    <p class="empty">No hikes match.</p>
   {:else}
     <div class="table">
       <!-- Header and rows share the same grid columns. -->
@@ -124,6 +139,40 @@
     color: var(--muted);
     font-size: 0.9em;
   }
+  /* Search. */
+  .search {
+    position: relative;
+    margin: 0 0 8px;
+  }
+  .search input {
+    box-sizing: border-box;
+    width: 100%;
+    font: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 32px 6px 10px;
+  }
+  .search input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  /* Our own clear button, not the webview's. */
+  .search input::-webkit-search-cancel-button {
+    display: none;
+  }
+  .clear {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    border: none;
+    background: none;
+    padding: 0 4px;
+    color: var(--muted);
+  }
+  /* End of search. */
   .table {
     border-radius: 8px;
     background: var(--surface);
