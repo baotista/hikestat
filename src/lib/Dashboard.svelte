@@ -157,11 +157,18 @@
       onselect={select}
     />
 
-    {#if selected}
-      {#key selected.start}
-        <HikeList title={formatBucket(dashboard.view, selected.start)} ids={selected.hikeIds} {version} {onchanged} />
-      {/key}
-    {/if}
+    <!-- The list of hikes: the selected bar's, or the whole window's (every hike in All). A new
+         window or bar starts a new list (and closes the panel); a reload keeps it. -->
+    {#key selected ? `${windowOf(dashboard)}/${selected.start}` : windowOf(dashboard)}
+      <HikeList
+        title={selected
+          ? formatBucket(dashboard.view, selected.start)
+          : formatWindow(dashboard.view, dashboard.first, dashboard.last)}
+        ids={selected ? selected.hikeIds : dashboard.buckets.flatMap((b) => b.hikeIds)}
+        {version}
+        {onchanged}
+      />
+    {/key}
   {:else if !failure}
     <p class="muted">Loading…</p>
   {/if}

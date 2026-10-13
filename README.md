@@ -22,6 +22,11 @@ year, from the year of the first hike to the current year), with ‹ › to move
 or years, plus the database it uses and whether it can be opened. It opens on the current week. Built with [Tauri](https://v2.tauri.app) v2 and Svelte 5 + TypeScript (see
 [ADR 0001](docs/adr/0001-tauri-with-svelte-frontend.md)).
 
+Under the chart, the list of hikes shows the hikes of the window (with the kind filter; in All,
+every hike), or those of the selected bar (click it again to go back to the window), most recent
+first, with their name, date, distance, ascent, moving time and average speed. A row opens the
+hike's panel.
+
 In a hike's panel, the kind can be edited (free text, suggesting the kinds already in the
 database; blank sets it back to Not set). It is saved on blur or Enter, and the dashboard and the
 kind filter reload right away.
