@@ -1,6 +1,6 @@
 [package]
 name = "hikestat-app"
-version = "2.1.1"
+version = "3.0.0"
 description = "Hikestat desktop app"
 edition = "2024"
 
