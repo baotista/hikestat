@@ -21,6 +21,8 @@
   let metric = $state<Metric>("distance");
   // Same for the kind filter; the app opens on All.
   let kindFilter = $state<KindFilter>({ filter: "all" });
+  // And for the list of hikes' search; empty at start.
+  let search = $state("");
 
   // Only the latest request may update the screen (focus and ⌘R can overlap).
   let latest = 0;
@@ -119,7 +121,7 @@
     <p class="muted">Loading…</p>
   {:else if status.state === "ready"}
     <!-- An edit reloads like focus or ⌘R: same window, filter and selection, fresh data. -->
-    <Dashboard {version} bind:anchor bind:view bind:metric bind:kindFilter onchanged={refresh} />
+    <Dashboard {version} bind:anchor bind:view bind:metric bind:kindFilter bind:search onchanged={refresh} />
   {:else if status.state === "missing"}
     <!-- The first drop creates the database at this path; refresh() then shows the dashboard. -->
     <p class="message warning">

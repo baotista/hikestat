@@ -1,5 +1,5 @@
 // What the list of hikes shows, in which order. Pure functions; sorting by other columns (#39)
-// and searching (#40) will add options here.
+// will add an option here.
 
 import type { HikeDetails } from "../bindings";
 
@@ -21,7 +21,22 @@ function byDateDescending(a: HikeDetails, b: HikeDetails): number {
   return a.id - b.id;
 }
 
-export function listHikes(hikes: HikeDetails[]): HikeListing {
-  const sorted = [...hikes].sort(byDateDescending);
+/** Lower case, accents removed: "Èze" and "eze" compare equal. */
+function normalize(text: string): string {
+  return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+}
+
+/** Whether `needle` (normalized) is in the hike's displayed name, GPX name, note or kind. */
+function matches(hike: HikeDetails, needle: string): boolean {
+  return [hike.title, hike.name, hike.note, hike.kind].some(
+    (field) => field !== null && normalize(field).includes(needle),
+  );
+}
+
+/** `search` narrows the hikes shown (blank: all of them); `total` still counts every hike given. */
+export function listHikes(hikes: HikeDetails[], search = ""): HikeListing {
+  const needle = normalize(search.trim());
+  const found = needle === "" ? hikes : hikes.filter((h) => matches(h, needle));
+  const sorted = [...found].sort(byDateDescending);
   return { hikes: sorted, shown: sorted.length, total: hikes.length };
 }

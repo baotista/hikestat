@@ -48,3 +48,38 @@ describe("listHikes", () => {
     expect(input.map((h) => h.id)).toEqual([1, 2]);
   });
 });
+
+describe("listHikes with a search", () => {
+  const walks = [
+    { ...hike(1, 400), title: "Tour de l'Èze", name: "Morning walk" },
+    { ...hike(2, 300), name: "Col de la Croix" },
+    { ...hike(3, 200), name: "Lunch", note: "Picnic by the LAKE" },
+    { ...hike(4, 100), name: "Afternoon", kind: "Cycling" },
+  ];
+  const found = (search: string) => listHikes(walks, search).hikes.map((h) => h.id);
+
+  it("finds the displayed name, ignoring case and accents", () => {
+    expect(found("eze")).toEqual([1]);
+    expect(found("CROIX")).toEqual([2]);
+  });
+
+  it("also finds the GPX name of a hike with a title", () => {
+    expect(found("morning")).toEqual([1]);
+  });
+
+  it("finds the note and the kind", () => {
+    expect(found("lake")).toEqual([3]);
+    expect(found("cycl")).toEqual([4]);
+  });
+
+  it("shows every hike for an empty or blank search", () => {
+    expect(found("")).toEqual([1, 2, 3, 4]);
+    expect(found("   ")).toEqual([1, 2, 3, 4]);
+  });
+
+  it("counts the hikes shown out of those given", () => {
+    const list = listHikes(walks, "de");
+    expect([list.shown, list.total]).toEqual([2, 4]);
+    expect(listHikes(walks, "nowhere").shown).toBe(0);
+  });
+});
