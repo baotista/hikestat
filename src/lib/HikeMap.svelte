@@ -17,6 +17,8 @@
     speedLines,
     trackBounds,
   } from "./mapData";
+  import type { FeatureCollection, Point } from "geojson";
+  import { positionAt } from "./profile";
   import { BACKGROUND_STYLE_URL, GLYPHS_URL, currentScheme, darkQuery, prepareStyle, themeColors } from "./mapStyle";
 
   // Map of one hike's track. `version` changes on every reload: the track is fetched again, but
@@ -28,7 +30,15 @@
     version,
     expanded = $bindable(false),
     track = $bindable(null),
-  }: { id: number; version: number; expanded?: boolean; track?: MapTrack | null } = $props();
+    hovered = null,
+  }: {
+    id: number;
+    version: number;
+    expanded?: boolean;
+    track?: MapTrack | null;
+    /** The distance (m) hovered on the elevation profile, marked on the map. */
+    hovered?: number | null;
+  } = $props();
 
   setWorkerUrl(workerUrl);
 
@@ -67,6 +77,20 @@
   // --- Track layers ------------------------------------------------------------------------------
 
   const SOURCES = ["track-lines", "track-speed", "track-gaps", "track-ends", "track-km"] as const;
+
+  function hoverData(): FeatureCollection<Point> {
+    const at = track === null || hovered === null ? null : positionAt(track, hovered);
+    return {
+      type: "FeatureCollection",
+      features: at === null ? [] : [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: at } }],
+    };
+  }
+
+  $effect(() => {
+    void hovered;
+    void track;
+    map?.getSource<GeoJSONSource>("track-hover")?.setData(hoverData());
+  });
 
   // Colours are read from the theme each time: a theme change reloads the style and the data.
   function sourceData(source: (typeof SOURCES)[number], data: MapTrack) {
@@ -128,6 +152,14 @@
       paint: { "circle-radius": 5, "circle-color": bg, "circle-stroke-color": accent, "circle-stroke-width": 3 },
     });
     addKmLayers(bg, muted, text);
+    // The spot hovered on the elevation profile, above everything else.
+    map.addSource("track-hover", { type: "geojson", data: hoverData() });
+    map.addLayer({
+      id: "track-hover",
+      type: "circle",
+      source: "track-hover",
+      paint: { "circle-radius": 6, "circle-color": text, "circle-stroke-color": bg, "circle-stroke-width": 2 },
+    });
   }
 
   // Km markers: a round badge with the number. One layer per step, the multiples of 10 on top so

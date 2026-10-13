@@ -4,13 +4,17 @@
   import { type ProfilePoint, kmTicks, profileExtent, profileSeries } from "./profile";
 
   // Elevation against distance, hand-drawn like the bar chart (ADR 0003). Hovering shows a line
-  // with the km and the elevation there.
-  let { track, height = 120 }: { track: MapTrack; height?: number } = $props();
+  // with the km and the elevation there; `hovered` (that distance, in metres) is bound by the panel
+  // so the map can mark the same spot.
+  let {
+    track,
+    height = 120,
+    hovered = $bindable(null),
+  }: { track: MapTrack; height?: number; hovered?: number | null } = $props();
 
   const PAD = { top: 8, right: 8, bottom: 20, left: 44 };
 
   let width = $state(0);
-  let hovered = $state<number | null>(null);
 
   const series = $derived(profileSeries(track));
   const extent = $derived(profileExtent(track, series));

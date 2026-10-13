@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MapTrack, Segment } from "../bindings";
-import { kmTicks, profileExtent, profileSeries } from "./profile";
+import { kmTicks, positionAt, profileExtent, profileSeries } from "./profile";
 
 /** A segment from `[distance, elevation]` pairs; positions don't matter here. */
 function seg(points: [number, number | null][]): Segment {
@@ -99,5 +99,47 @@ describe("kmTicks", () => {
 
   it("has only 0 for a hike of no length", () => {
     expect(kmTicks(0, 300, 50)).toEqual([0]);
+  });
+});
+
+describe("positionAt", () => {
+  // Two segments: 0 → 1000 m along a meridian, then (after a trou de signal) 1000 → 1500 m.
+  const t: MapTrack = {
+    segments: [
+      { ...seg([[0, 100], [500, 110], [1000, 120]]), positions: [[6.0, 45.0], [6.0, 45.005], [6.0, 45.01]] },
+      { ...seg([[1000, 300], [1500, 310]]), positions: [[6.1, 45.1], [6.1, 45.105]] },
+    ],
+    gaps: [],
+    speedScale: null,
+    kmMarkers: [],
+  };
+
+  it("interpolates between the two positions around the distance", () => {
+    const [lon, lat] = positionAt(t, 250)!;
+    expect(lon).toBeCloseTo(6.0);
+    expect(lat).toBeCloseTo(45.0025);
+  });
+
+  it("lands on a position at its exact distance", () => {
+    expect(positionAt(t, 500)).toEqual([6.0, 45.005]);
+  });
+
+  it("puts a distance shared by two segments at the end of the first", () => {
+    expect(positionAt(t, 1000)).toEqual([6.0, 45.01]);
+  });
+
+  it("follows the next segment after the trou de signal", () => {
+    const [lon, lat] = positionAt(t, 1250)!;
+    expect(lon).toBeCloseTo(6.1);
+    expect(lat).toBeCloseTo(45.1025);
+  });
+
+  it("clamps outside the hike", () => {
+    expect(positionAt(t, -10)).toEqual([6.0, 45.0]);
+    expect(positionAt(t, 9999)).toEqual([6.1, 45.105]);
+  });
+
+  it("is null without points", () => {
+    expect(positionAt(track(), 10)).toBeNull();
   });
 });
