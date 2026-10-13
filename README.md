@@ -21,7 +21,31 @@ statistics and stores them in a SQLite database. Built with [Tauri](https://v2.t
 
 The data reloads when the window regains focus and with ⌘R.
 
-## Prerequisites
+## Install
+
+Download `Hikestat-<version>-macos-arm64.zip` (Apple silicon) from the
+[latest release](https://github.com/baotista/hikestat/releases/latest), unzip it and move
+`Hikestat.app` to `/Applications`.
+
+The app is not notarised by Apple, so macOS blocks the first launch of a downloaded copy. Unblock
+it once, either way:
+
+- **In Terminal**: run
+
+  ```sh
+  xattr -dr com.apple.quarantine /Applications/Hikestat.app
+  ```
+
+  The browser marks downloaded files with the `com.apple.quarantine` attribute, and macOS checks
+  the apps that carry it. `xattr -d` deletes that attribute, `-r` from the app and everything inside
+  it: the app then opens like any other.
+- **In System Settings**: launch Hikestat once and close the warning, then open **System Settings →
+  Privacy & Security**, scroll to **Security** and click **Open Anyway** next to Hikestat. Confirm
+  with your password; the app then opens normally.
+
+Right-click → **Open** no longer bypasses the check since macOS 15.
+
+## Build prerequisites
 
 - Rust 1.85 or newer (2024 edition)
 - Node.js 24 and [pnpm](https://pnpm.io)
