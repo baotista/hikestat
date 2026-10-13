@@ -73,3 +73,36 @@ export function positionAt(track: MapTrack, distanceM: number): LonLat | null {
   }
   return segments.at(-1)!.positions.at(-1)!;
 }
+
+/**
+ * The distance (m) of the point of the track nearest to `at`: the nearest point on the segments'
+ * lines (never across a trou de signal), in a local plane where a degree of longitude is shrunk
+ * by the cosine of the latitude; its distance is interpolated like the positions. Null without
+ * points.
+ */
+export function distanceAt(track: MapTrack, at: LonLat): number | null {
+  const shrink = Math.cos((at[1] * Math.PI) / 180);
+  const plane = ([lon, lat]: LonLat): LonLat => [lon * shrink, lat];
+  const [px, py] = plane(at);
+  let bestGap = Infinity;
+  let bestDistance: number | null = null;
+  const consider = (gap: number, distanceM: number) => {
+    if (gap < bestGap) [bestGap, bestDistance] = [gap, distanceM];
+  };
+  for (const s of track.segments) {
+    if (s.positions.length === 1) {
+      const [x, y] = plane(s.positions[0]);
+      consider(Math.hypot(px - x, py - y), s.distancesM[0]);
+    }
+    for (let i = 1; i < s.positions.length; i++) {
+      const [ax, ay] = plane(s.positions[i - 1]);
+      const [bx, by] = plane(s.positions[i]);
+      const [dx, dy] = [bx - ax, by - ay];
+      const length2 = dx * dx + dy * dy;
+      const t = length2 === 0 ? 0 : Math.min(1, Math.max(0, ((px - ax) * dx + (py - ay) * dy) / length2));
+      const gap = Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+      consider(gap, s.distancesM[i - 1] + t * (s.distancesM[i] - s.distancesM[i - 1]));
+    }
+  }
+  return bestDistance;
+}
