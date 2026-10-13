@@ -102,7 +102,7 @@ an app built on a newer tag would migrate the database, and an older CLI would t
 to it. **Always install the app and the `hikestat` CLI from the same library tag**, for example:
 
 ```sh
-cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.11.0
+cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.12.0
 ```
 
 If this fails with `failed to authenticate when downloading repository` (`attempted ssh-agent
