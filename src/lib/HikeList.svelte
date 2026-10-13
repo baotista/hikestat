@@ -83,6 +83,7 @@
     {#if listing && listing.total > 0}
       <span class="count">
         {listing.shown < listing.total ? `${listing.shown} of ${formatHikeCount(listing.total)}` : formatHikeCount(listing.total)}
+        · {formatDistance(listing.distanceM)}
       </span>
     {/if}
   </div>
