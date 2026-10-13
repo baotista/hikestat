@@ -9,6 +9,8 @@ export type HikeListing = {
   shown: number;
   /** How many hikes the list was given (the window's or the bar's). */
   total: number;
+  /** Summed distance of the hikes shown, in metres; a missing distance counts as 0. */
+  distanceM: number;
 };
 
 export type SortColumn = "date" | "name" | "distance" | "ascent" | "movingTime" | "avgSpeed";
@@ -95,7 +97,7 @@ function comparator(sort: HikeSort): (a: HikeDetails, b: HikeDetails) => number 
 
 /**
  * `search` narrows the hikes shown (blank: all of them), `sort` orders them; `total` still counts
- * every hike given.
+ * every hike given, `distanceM` only the hikes shown.
  */
 export function listHikes(
   hikes: HikeDetails[],
@@ -104,5 +106,6 @@ export function listHikes(
   const needle = normalize(search.trim());
   const found = needle === "" ? hikes : hikes.filter((h) => matches(h, needle));
   const sorted = [...found].sort(comparator(sort));
-  return { hikes: sorted, shown: sorted.length, total: hikes.length };
+  const distanceM = sorted.reduce((sum, h) => sum + (h.distanceM ?? 0), 0);
+  return { hikes: sorted, shown: sorted.length, total: hikes.length, distanceM };
 }

@@ -28,8 +28,9 @@ first, with their name, date, distance, ascent, moving time and average speed. A
 sorts by that column (names A to Z, the others biggest or latest first) and reverses on a second
 click; hikes without a value for it stay last. The search field above the list narrows it (never
 the chart) as you type: it looks in the name, the GPX name, the note and the kind, ignoring case and
-accents ("eze" finds "Èze"); the header then says "3 of 24 hikes". The sort and the search are kept
-when the window or the bar changes. A row opens the hike's panel.
+accents ("eze" finds "Èze"); the header then says "3 of 24 hikes". The header also gives the total
+distance of the hikes shown ("3 of 24 hikes · 25.1 km"). The sort and the search are kept when the
+window or the bar changes. A row opens the hike's panel.
 
 In a hike's panel, the kind can be edited (free text, suggesting the kinds already in the
 database; blank sets it back to Not set). It is saved on blur or Enter, and the dashboard and the

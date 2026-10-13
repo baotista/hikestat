@@ -163,3 +163,16 @@ describe("listHikes with a search", () => {
     expect(listHikes(walks, { search: "nowhere" }).shown).toBe(0);
   });
 });
+
+describe("listHikes distance", () => {
+  it("sums the distance of the hikes shown, a missing one counting as 0", () => {
+    const hikes = [
+      hike(1, 100, { name: "Lake", distanceM: 1200 }),
+      hike(2, 200, { name: "Ridge", distanceM: 3400 }),
+      hike(3, 300, { name: "Lake loop", distanceM: null }),
+    ];
+    expect(listHikes(hikes).distanceM).toBe(4600);
+    expect(listHikes(hikes, { search: "lake" }).distanceM).toBe(1200);
+    expect(listHikes(hikes, { search: "nowhere" }).distanceM).toBe(0);
+  });
+});
