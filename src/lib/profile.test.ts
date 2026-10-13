@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MapTrack, Segment } from "../bindings";
-import { kmTicks, positionAt, profileExtent, profileSeries } from "./profile";
+import { distanceAt, kmTicks, positionAt, profileExtent, profileSeries } from "./profile";
 
 /** A segment from `[distance, elevation]` pairs; positions don't matter here. */
 function seg(points: [number, number | null][]): Segment {
@@ -141,5 +141,39 @@ describe("positionAt", () => {
 
   it("is null without points", () => {
     expect(positionAt(track(), 10)).toBeNull();
+  });
+});
+
+describe("distanceAt", () => {
+  // Same track as for positionAt: north along 6.0° for 1000 m, then (after a gap) along 6.1°.
+  const t: MapTrack = {
+    segments: [
+      { ...seg([[0, 100], [500, 110], [1000, 120]]), positions: [[6.0, 45.0], [6.0, 45.005], [6.0, 45.01]] },
+      { ...seg([[1000, 300], [1500, 310]]), positions: [[6.1, 45.1], [6.1, 45.105]] },
+    ],
+    gaps: [],
+    speedScale: null,
+    kmMarkers: [],
+  };
+
+  it("projects a point beside the track onto it", () => {
+    expect(distanceAt(t, [6.0002, 45.0025])).toBeCloseTo(250, 0);
+  });
+
+  it("gives a position's own distance", () => {
+    expect(distanceAt(t, [6.0, 45.005])).toBeCloseTo(500, 6);
+  });
+
+  it("clamps past the end to the last distance", () => {
+    expect(distanceAt(t, [6.1, 45.2])).toBeCloseTo(1500, 6);
+  });
+
+  it("picks the nearest segment, never the trou de signal between them", () => {
+    // Halfway between the two segments' ends, but nearer the second one's line.
+    expect(distanceAt(t, [6.099, 45.1025])).toBeCloseTo(1250, 0);
+  });
+
+  it("is null without points", () => {
+    expect(distanceAt(track(), [6.0, 45.0])).toBeNull();
   });
 });

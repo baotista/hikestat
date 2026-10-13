@@ -18,7 +18,7 @@
     trackBounds,
   } from "./mapData";
   import type { FeatureCollection, Point } from "geojson";
-  import { positionAt } from "./profile";
+  import { distanceAt, positionAt } from "./profile";
   import { BACKGROUND_STYLE_URL, GLYPHS_URL, currentScheme, darkQuery, prepareStyle, themeColors } from "./mapStyle";
 
   // Map of one hike's track. `version` changes on every reload: the track is fetched again, but
@@ -30,13 +30,13 @@
     version,
     expanded = $bindable(false),
     track = $bindable(null),
-    hovered = null,
+    hovered = $bindable(null),
   }: {
     id: number;
     version: number;
     expanded?: boolean;
     track?: MapTrack | null;
-    /** The distance (m) hovered on the elevation profile, marked on the map. */
+    /** The distance (m) hovered on the elevation profile, marked on the map; hovering the track sets it. */
     hovered?: number | null;
   } = $props();
 
@@ -267,6 +267,11 @@
       addTrackLayers();
       if (track !== null) showTrack(id);
     });
+    // Hovering the track (its casing, the widest line) points the profile at the nearest spot.
+    map.on("mousemove", "track-casing", (event) => {
+      if (track !== null) hovered = distanceAt(track, [event.lngLat.lng, event.lngLat.lat]);
+    });
+    map.on("mouseleave", "track-casing", () => (hovered = null));
     // Tiles that fail to load (offline after the style came) leave the background empty.
     map.on("error", (event) => {
       if ("sourceId" in event && typeof event.sourceId === "string" && !event.sourceId.startsWith("track-")) {
