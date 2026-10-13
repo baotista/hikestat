@@ -49,3 +49,27 @@ export function kmTicks(distanceM: number, widthPx: number, minGapPx: number): n
   for (let i = 0; i * step <= distanceM + 1e-6; i++) ticks.push(Math.round(i * step));
   return ticks;
 }
+
+type LonLat = [number, number];
+
+/**
+ * Where the hike is at `distanceM` (clamped to the hike), interpolated between the two positions
+ * around it; a distance shared by two segments (a trou de signal) is the end of the first. Null
+ * without points.
+ */
+export function positionAt(track: MapTrack, distanceM: number): LonLat | null {
+  const segments = track.segments.filter((s) => s.positions.length > 0);
+  if (segments.length === 0) return null;
+  const first = segments[0];
+  if (distanceM <= first.distancesM[0]) return first.positions[0];
+  for (const s of segments) {
+    const i = s.distancesM.findIndex((d) => d >= distanceM);
+    if (i === -1) continue;
+    if (i === 0) return s.positions[0];
+    const [d0, d1] = [s.distancesM[i - 1], s.distancesM[i]];
+    const t = d1 === d0 ? 1 : (distanceM - d0) / (d1 - d0);
+    const [a, b] = [s.positions[i - 1], s.positions[i]];
+    return [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])];
+  }
+  return segments.at(-1)!.positions.at(-1)!;
+}

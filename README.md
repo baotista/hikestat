@@ -50,7 +50,8 @@ frames its track.
 
 Under the map, the elevation profile draws the elevation against the distance (counted like the
 stats; a dashed line marks each gap between segments; glitch elevations left out). Hovering it
-shows the km and the elevation; a hike without elevation says so.
+shows the km and the elevation, and marks that spot on the map; a hike without elevation says
+so.
 
 ## Prerequisites
 

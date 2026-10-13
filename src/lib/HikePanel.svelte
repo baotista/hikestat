@@ -64,6 +64,8 @@
   let mapExpanded = $state(false);
   // The hike's map track, loaded by the map and shared with the elevation profile (raw: replaced whole).
   let mapTrack = $state.raw<MapTrack | null>(null);
+  // The distance hovered on the profile, marked on the map.
+  let hoveredDistance = $state<number | null>(null);
 
   function onKeydown(event: KeyboardEvent) {
     if (event.key === "Escape") {
@@ -318,10 +320,10 @@
       {/each}
     </dl>
 
-    <HikeMap {id} {version} bind:expanded={mapExpanded} bind:track={mapTrack} />
+    <HikeMap {id} {version} bind:expanded={mapExpanded} bind:track={mapTrack} hovered={hoveredDistance} />
     {#if mapTrack !== null && mapTrack.segments.length > 0}
       <div class="profile">
-        <ElevationProfile track={mapTrack} />
+        <ElevationProfile track={mapTrack} bind:hovered={hoveredDistance} />
       </div>
     {/if}
   {/if}
