@@ -11,19 +11,22 @@
     formatSpeed,
     orMissing,
   } from "./format";
-  import { listHikes } from "./hikeList";
+  import { DEFAULT_SORT, type HikeSort, type SortColumn, listHikes, nextSort } from "./hikeList";
 
   // The list of hikes under the chart: the window's hikes, or the selected bar's, fetched from their
   // `hikeIds`. `version` changes on every reload (focus, ⌘R, import, edit): the hikes are fetched
   // again. `onchanged` is called after the panel saved an edit. `search` narrows the list only (never
-  // the chart); it is owned by the parent so it survives a new window, bar or a visit to Settings.
+  // the chart) and `sort` orders it; both are owned by the parent so they survive a new window, bar
+  // or a visit to Settings.
   let {
     title,
     ids,
     version,
     search = $bindable(""),
     onchanged,
-  }: { title: string; ids: number[]; version: number; search?: string; onchanged?: () => void } = $props();
+    sort = $bindable(DEFAULT_SORT),
+  }: { title: string; ids: number[]; version: number; search?: string; onchanged?: () => void; sort?: HikeSort } =
+    $props();
 
   let hikes = $state<HikeDetails[] | null>(null);
   let failure = $state<string | null>(null);
@@ -52,7 +55,21 @@
     });
   });
 
-  const listing = $derived(hikes === null ? null : listHikes(hikes, search));
+  const listing = $derived(hikes === null ? null : listHikes(hikes, { search, sort }));
+
+  const COLUMNS: { column: SortColumn; label: string; number: boolean }[] = [
+    { column: "name", label: "Name", number: false },
+    { column: "date", label: "Date", number: false },
+    { column: "distance", label: "Distance", number: true },
+    { column: "ascent", label: "Ascent", number: true },
+    { column: "movingTime", label: "Moving time", number: true },
+    { column: "avgSpeed", label: "Avg speed", number: true },
+  ];
+
+  function ariaSort(column: SortColumn): "ascending" | "descending" | "none" {
+    if (sort.column !== column) return "none";
+    return sort.descending ? "descending" : "ascending";
+  }
 
   // An edit saved in the panel (title, note) replaces the listed hike, without refetching.
   function onupdated(updated: HikeDetails) {
@@ -89,14 +106,17 @@
     <p class="empty">No hikes match.</p>
   {:else}
     <div class="table">
-      <!-- Header and rows share the same grid columns. -->
-      <div class="columns" aria-hidden="true">
-        <span>Name</span>
-        <span>Date</span>
-        <span class="number">Distance</span>
-        <span class="number">Ascent</span>
-        <span class="number">Moving time</span>
-        <span class="number">Avg speed</span>
+      <!-- Header and rows share the same grid columns. A header sorts by its column; again, reverses. -->
+      <div class="columns" role="row">
+        {#each COLUMNS as { column, label, number } (column)}
+          <span class:number role="columnheader" aria-sort={ariaSort(column)}>
+            <button class="sort" class:active={sort.column === column} onclick={() => (sort = nextSort(sort, column))}>
+              {label}{#if sort.column === column}<span class="arrow" aria-hidden="true"
+                  >{sort.descending ? "↓" : "↑"}</span
+                >{/if}
+            </button>
+          </span>
+        {/each}
       </div>
       <ul>
         {#each listing.hikes as hike (hike.id)}
@@ -194,6 +214,22 @@
     text-transform: uppercase;
     border-bottom: 1px solid var(--border);
   }
+  .sort {
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+  }
+  .sort:hover,
+  .sort.active {
+    color: var(--text);
+  }
+  .arrow {
+    margin-left: 4px;
+  }
   ul {
     list-style: none;
     margin: 0;
@@ -222,6 +258,7 @@
   }
   .date {
     color: var(--muted);
+    white-space: nowrap;
   }
   .number {
     text-align: right;

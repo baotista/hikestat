@@ -4,6 +4,7 @@
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { commands, type DbStatus, type KindFilter, type View } from "./bindings";
   import Dashboard from "./lib/Dashboard.svelte";
+  import { DEFAULT_SORT, type HikeSort } from "./lib/hikeList";
   import ImportBanner, { type ImportBannerState } from "./lib/ImportBanner.svelte";
   import Settings from "./lib/Settings.svelte";
   import type { Metric } from "./lib/format";
@@ -23,6 +24,8 @@
   let kindFilter = $state<KindFilter>({ filter: "all" });
   // And for the list of hikes' search; empty at start.
   let search = $state("");
+  // And for the list of hikes' sort; most recent first.
+  let hikeSort = $state<HikeSort>(DEFAULT_SORT);
 
   // Only the latest request may update the screen (focus and ⌘R can overlap).
   let latest = 0;
@@ -121,7 +124,7 @@
     <p class="muted">Loading…</p>
   {:else if status.state === "ready"}
     <!-- An edit reloads like focus or ⌘R: same window, filter and selection, fresh data. -->
-    <Dashboard {version} bind:anchor bind:view bind:metric bind:kindFilter bind:search onchanged={refresh} />
+    <Dashboard {version} bind:anchor bind:view bind:metric bind:kindFilter bind:search bind:sort={hikeSort} onchanged={refresh} />
   {:else if status.state === "missing"}
     <!-- The first drop creates the database at this path; refresh() then shows the dashboard. -->
     <p class="message warning">
