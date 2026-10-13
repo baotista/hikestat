@@ -18,6 +18,7 @@
     trackBounds,
   } from "./mapData";
   import type { FeatureCollection, Point } from "geojson";
+  import ElevationProfile from "./ElevationProfile.svelte";
   import { distanceAt, positionAt } from "./profile";
   import { BACKGROUND_STYLE_URL, GLYPHS_URL, currentScheme, darkQuery, prepareStyle, themeColors } from "./mapStyle";
 
@@ -338,6 +339,12 @@
         <span>Stopped</span>
       </div>
     {/if}
+    <!-- Expanded, the map covers the panel's profile: it gets its own strip, linked the same way. -->
+    {#if expanded}
+      <div class="strip">
+        <ElevationProfile {track} bind:hovered />
+      </div>
+    {/if}
   {/if}
   {#if track !== null && !isEmpty(track) && !failure}
     {#if expanded}
@@ -359,12 +366,31 @@
   }
   /* Expanded: the same frame over the whole window, above the panel. */
   .frame.expanded {
+    --strip: 136px;
     position: fixed;
     inset: 0;
     height: auto;
     border: none;
     border-radius: 0;
     z-index: 20;
+  }
+  /* The map (and its attribution) ends above the profile strip; the legend sits above it too. */
+  .frame.expanded .map {
+    bottom: var(--strip);
+  }
+  .frame.expanded .legend {
+    bottom: calc(var(--strip) + 8px);
+  }
+  .strip {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--strip);
+    box-sizing: border-box;
+    padding: 8px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
   }
   .map {
     position: absolute;
