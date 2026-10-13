@@ -2,6 +2,7 @@
   import { commands, type Dashboard, type KindFilter, type View } from "../bindings";
   import BarChart, { type Bar } from "./BarChart.svelte";
   import HikeList from "./HikeList.svelte";
+  import { DEFAULT_SORT, type HikeSort } from "./hikeList";
   import KindPicker from "./KindPicker.svelte";
   import {
     formatBarLabel,
@@ -17,8 +18,8 @@
   } from "./format";
 
   // `version` changes on every reload (focus, ⌘R): the dashboard is fetched again.
-  // `anchor`, `view`, `metric`, `kindFilter` and `search` are owned by the parent so they survive a
-  // visit to Settings.
+  // `anchor`, `view`, `metric`, `kindFilter`, and the list's `search` and `sort` are owned by the
+  // parent so they survive a visit to Settings.
   // `anchor` is a date (`null` = today, in the machine's time zone, resolved in Rust): every view
   // but All shows the window containing it, so switching views keeps it in sight.
   let {
@@ -28,6 +29,7 @@
     metric = $bindable("distance"),
     kindFilter = $bindable({ filter: "all" }),
     search = $bindable(""),
+    sort = $bindable(DEFAULT_SORT),
     onchanged,
   }: {
     version: number;
@@ -37,6 +39,7 @@
     kindFilter?: KindFilter;
     // The list of hikes' search text: narrows the list, never the chart.
     search?: string;
+    sort?: HikeSort;
     // Called after a hike edit is saved: the parent reloads (bumps `version`).
     onchanged?: () => void;
   } = $props();
@@ -171,6 +174,7 @@
         {version}
         bind:search
         {onchanged}
+        bind:sort
       />
     {/key}
   {:else if !failure}

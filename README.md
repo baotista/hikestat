@@ -24,10 +24,12 @@ or years, plus the database it uses and whether it can be opened. It opens on th
 
 Under the chart, the list of hikes shows the hikes of the window (with the kind filter; in All,
 every hike), or those of the selected bar (click it again to go back to the window), most recent
-first, with their name, date, distance, ascent, moving time and average speed. A row opens the
-hike's panel. The search field above it narrows the list (never the chart) as you type: it looks in
-the name, the GPX name, the note and the kind, ignoring case and accents ("eze" finds "Èze"); the
-header then says "3 of 24 hikes", and the search is kept when the window or the bar changes.
+first, with their name, date, distance, ascent, moving time and average speed. A column header
+sorts by that column (names A to Z, the others biggest or latest first) and reverses on a second
+click; hikes without a value for it stay last. The search field above the list narrows it (never
+the chart) as you type: it looks in the name, the GPX name, the note and the kind, ignoring case and
+accents ("eze" finds "Èze"); the header then says "3 of 24 hikes". The sort and the search are kept
+when the window or the bar changes. A row opens the hike's panel.
 
 In a hike's panel, the kind can be edited (free text, suggesting the kinds already in the
 database; blank sets it back to Not set). It is saved on blur or Enter, and the dashboard and the
