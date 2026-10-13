@@ -18,7 +18,12 @@ type LonLat = [number, number];
 
 /** A segment whose intervalles are all stopped unless given. */
 function seg(positions: LonLat[], intervals?: Interval[]): Segment {
-  return { positions, intervals: intervals ?? positions.slice(1).map(() => ({ kind: "stopped" })) };
+  return {
+    positions,
+    intervals: intervals ?? positions.slice(1).map(() => ({ kind: "stopped" })),
+    distancesM: positions.map((_, i) => i * 100),
+    elevationsM: positions.map(() => null),
+  };
 }
 
 const twoSegments: MapTrack = {

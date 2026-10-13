@@ -26,11 +26,17 @@ pub enum Interval {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
 pub struct Segment {
     #[specta(type = Vec<TsLonLat>)]
     pub positions: Vec<LonLat>,
     /// One per pair of consecutive positions.
     pub intervals: Vec<Interval>,
+    /// For the profile: the distance from the start of the hike at each position, in metres.
+    #[specta(type = Vec<specta_typescript::Number>)]
+    pub distances_m: Vec<f64>,
+    /// For the profile: the elevation at each position, `null` if missing or a GPS glitch.
+    pub elevations_m: Vec<Option<f64>>,
 }
 
 /// A trou de signal, drawn as a dashed line from the end of a segment to the start of the next.
@@ -98,6 +104,8 @@ pub fn track(db: &Db, id: i64) -> Result<MapTrack, String> {
             .map(|seg| Segment {
                 positions: seg.positions.into_iter().map(lon_lat).collect(),
                 intervals: seg.intervals.into_iter().map(interval).collect(),
+                distances_m: seg.distances_m,
+                elevations_m: seg.elevations_m,
             })
             .collect(),
         gaps: track
@@ -199,6 +207,19 @@ mod tests {
         assert_eq!(markers.len(), 1);
         assert_eq!((markers[0].km, markers[0].position.0), (1, 6.0));
         assert!((markers[0].position.1 - 45.009).abs() < 0.001);
+    }
+
+    #[test]
+    fn the_profile_is_passed_on_aligned_with_the_positions() {
+        let db = db_with_points(3, &[(0, 45.0, 6.0, None), (0, 45.01, 6.0, None)]);
+        db.connection()
+            .execute("UPDATE track_points SET ele = 850 WHERE idx = 0", [])
+            .unwrap();
+        let segment = &track(&db, 3).unwrap().segments[0];
+        assert_eq!(segment.distances_m.len(), segment.positions.len());
+        assert_eq!(segment.distances_m[0], 0.0);
+        assert!((segment.distances_m[1] - 1112.0).abs() < 1.0);
+        assert_eq!(segment.elevations_m, vec![Some(850.0), None]);
     }
 
     #[test]

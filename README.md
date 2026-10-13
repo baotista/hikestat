@@ -48,6 +48,10 @@ roads, water and names are lightened to stay readable), so it needs the network:
 offline, the track is drawn on a plain background and the next reload (focus, ⌘R) tries again. A reload keeps the map's framing; opening another hike
 frames its track.
 
+Under the map, the elevation profile draws the elevation against the distance (counted like the
+stats; a dashed line marks each gap between segments; glitch elevations left out). Hovering it
+shows the km and the elevation; a hike without elevation says so.
+
 ## Prerequisites
 
 - Rust 1.85 or newer (2024 edition)
@@ -102,7 +106,7 @@ an app built on a newer tag would migrate the database, and an older CLI would t
 to it. **Always install the app and the `hikestat` CLI from the same library tag**, for example:
 
 ```sh
-cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.11.0
+cargo install --git ssh://git@github.com/baotista/hikestats-ingester.git --tag v0.12.0
 ```
 
 If this fails with `failed to authenticate when downloading repository` (`attempted ssh-agent
